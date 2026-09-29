@@ -3,7 +3,7 @@ import { GoogleGenAI, Type } from '@google/genai'
 
 const port = Number(process.env.API_PORT || 3001)
 const maxImageBytes = 10 * 1024 * 1024
-const maxRequestBytes = 14 * 1024 * 1024
+const maxRequestBytes = 28 * 1024 * 1024
 const apiKey = process.env.GEMINI_API_KEY
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null
 
@@ -32,7 +32,7 @@ async function readJson(request) {
   let size = 0
   for await (const chunk of request) {
     size += chunk.length
-    if (size > maxRequestBytes) throw Object.assign(new Error('Image exceeds the 10 MB limit.'), { status: 413 })
+    if (size > maxRequestBytes) throw Object.assign(new Error('Chart images exceed the combined 20 MB limit.'), { status: 413 })
     chunks.push(chunk)
   }
   try {
@@ -86,30 +86,48 @@ const server = createServer(async (request, response) => {
 
   try {
     const body = await readJson(request)
-    const { mimeType, data, instrument, tradeBias } = body
-    if (!['image/png', 'image/jpeg'].includes(mimeType) || typeof data !== 'string'
-      || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(data)) {
-      sendJson(response, 400, { error: 'Provide a valid PNG or JPG chart image.' })
+    const { charts: chartInputs, instrument, tradeBias } = body
+    if (!Array.isArray(chartInputs) || chartInputs.length < 1 || chartInputs.length > 2) {
+      sendJson(response, 400, { error: 'Provide one or two chart images labeled 1D or 1H.' })
       return
     }
 
-    const image = Buffer.from(data, 'base64')
-    if (!image.length || image.length > maxImageBytes) {
-      sendJson(response, 413, { error: 'Image must be smaller than 10 MB.' })
-      return
+    const seenTimeframes = new Set()
+    const charts = []
+    let totalImageBytes = 0
+    for (const chart of chartInputs) {
+      const { timeframe, mimeType, data } = chart || {}
+      if (!['1D', '1H'].includes(timeframe) || seenTimeframes.has(timeframe)
+        || !['image/png', 'image/jpeg'].includes(mimeType) || typeof data !== 'string'
+        || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(data)) {
+        sendJson(response, 400, { error: 'Provide valid PNG or JPG charts labeled 1D or 1H.' })
+        return
+      }
+
+      seenTimeframes.add(timeframe)
+      const image = Buffer.from(data, 'base64')
+      totalImageBytes += image.length
+      if (!image.length || image.length > maxImageBytes || totalImageBytes > maxImageBytes * 2) {
+        sendJson(response, 413, { error: 'Each chart must be smaller than 10 MB.' })
+        return
+      }
+      charts.push({ timeframe, mimeType, data: image.toString('base64') })
     }
 
     const requestedInstrument = typeof instrument === 'string' ? instrument.slice(0, 60) : 'Unknown instrument'
     const requestedBias = typeof tradeBias === 'string' ? tradeBias.slice(0, 40) : 'Both directions'
     const result = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      model: process.env.GEMINI_MODEL || 'models/gemini-3.8-flash',
       contents: [{
         role: 'user',
         parts: [
           {
-            text: `Analyze this trading-chart screenshot. Requested instrument: ${requestedInstrument}. Trade bias: ${requestedBias}. Read price values only when the visible axis supports them; never invent a scale or levels. Identify the latest visible price action and a technically plausible entry, invalidation stop-loss, and first target. Respect the requested bias. If the chart is unreadable, lacks a legible price scale, or has no clear setup, return bias NO_TRADE and set entry, stopLoss, and target to 0. Confidence is 0-100. Give a concise rationale that states relevant chart evidence and any uncertainty. This is educational chart analysis, not financial advice.`,
+            text: `Analyze the supplied trading chart images for ${requestedInstrument}. Each image is labeled with its timeframe. Use the 1D chart for broader trend and major support/resistance, and the 1H chart for a potential entry, invalidation stop-loss, and first target. Set timeframe to the supplied timeframe labels joined together, such as 1D + 1H. Requested trade bias: ${requestedBias}. Read prices only when supported by the visible price axis; never invent a scale or levels. If the charts disagree about current price, state that uncertainty in the rationale. Respect the requested bias. If the images are unreadable, lack a legible price scale, or show no clear setup, return bias NO_TRADE and set entry, stopLoss, and target to 0. Confidence is 0-100. Give a concise rationale citing visible chart evidence and uncertainty. These are approximate educational estimates, not financial advice.`,
           },
-          { inlineData: { mimeType, data: image.toString('base64') } },
+          ...charts.flatMap(chart => [
+            { text: `The following image is the ${chart.timeframe} chart.` },
+            { inlineData: { mimeType: chart.mimeType, data: chart.data } },
+          ]),
         ],
       }],
       config: {

@@ -6,8 +6,8 @@
   </header>
 
   <section class="intro" id="workspace">
-    <div><p class="eyebrow">CHART INTELLIGENCE / 01</p><h1>Read the market<br /><em>before</em> you trade.</h1><p class="intro-copy">Upload a clean 1D chart and get a structured setup with levels, risk, and a reason to stay out.</p></div>
-    <div class="session-note"><span>◷</span><div><strong>Analysis window</strong><br /><small>1 day · perpetual contracts</small></div></div>
+    <div><p class="eyebrow">CHART INTELLIGENCE / 01</p><h1>Read the market<br /><em>before</em> you trade.</h1><p class="intro-copy">Add 1D context and a 1H chart for approximate levels, risk, and a reason to stay out.</p></div>
+    <div class="session-note"><span>◷</span><div><strong>Analysis window</strong><br /><small>1D + 1H · perpetual contracts</small></div></div>
   </section>
 
   <section class="workspace-grid">
@@ -15,21 +15,22 @@
       <div class="panel upload-panel">
         <div class="panel-heading"><span class="step">01</span><div><h2>Bring your chart</h2><p>PNG, JPG up to 10MB</p></div></div>
         <label class="dropzone">
-          @if (preview; as imagePreview) {
-            <img [src]="imagePreview" alt="Uploaded trading chart preview" />
-          } @else {
-            <span class="upload-icon">↑</span><strong>Drop chart image here</strong><span>or click to browse</span>
-          }
-          <input #chartInput type="file" accept="image/png,image/jpeg" (change)="onFileChange($event)" />
+          <span class="upload-icon">↑</span><strong>1D daily chart</strong><span>PNG or JPG, under 10MB</span>
+          <input #dailyChartInput type="file" accept="image/png,image/jpeg" (change)="onFileChange($event, '1D')" />
         </label>
-        <div class="file-row"><span class="file-icon">▧</span><span>{{ fileName }}</span>@if (preview) { <button class="remove" (click)="removeChart(chartInput)" aria-label="Remove chart">×</button> }</div>
+        <div class="file-row"><span class="file-icon">▧</span><span>{{ dailyFileName }}</span>@if (dailyFile) { <button class="remove" (click)="removeChart(dailyChartInput, '1D')" aria-label="Remove 1D chart">×</button> }</div>
+        <label class="dropzone timeframe-upload">
+          <span class="upload-icon">↑</span><strong>1H hourly chart</strong><span>PNG or JPG, under 10MB</span>
+          <input #hourlyChartInput type="file" accept="image/png,image/jpeg" (change)="onFileChange($event, '1H')" />
+        </label>
+        <div class="file-row"><span class="file-icon">▧</span><span>{{ hourlyFileName }}</span>@if (hourlyFile) { <button class="remove" (click)="removeChart(hourlyChartInput, '1H')" aria-label="Remove 1H chart">×</button> }</div>
       </div>
 
       <div class="panel settings-panel">
         <div class="panel-heading"><span class="step">02</span><div><h2>Market context</h2><p>Help the model read the setup</p></div></div>
         <label class="field-label">Instrument<select [value]="instrument" (change)="instrument = $any($event.target).value"><option>FARTCOINUSD perpetual</option><option>BTCUSDT perpetual</option><option>ETHUSDT perpetual</option><option>SOLUSDT perpetual</option></select></label>
         <label class="field-label">Trade bias<select [value]="tradeBias" (change)="tradeBias = $any($event.target).value"><option>Both directions</option><option>Long setups only</option><option>Short setups only</option></select></label>
-        <button class="primary-button" (click)="onAnalyze()" [disabled]="!selectedFile || analyzing"><span>✦</span>{{ analyzing ? 'Analyzing chart…' : 'Analyze chart' }}<span class="arrow">→</span></button>
+        <button class="primary-button" (click)="onAnalyze()" [disabled]="!hasCharts || analyzing"><span>✦</span>{{ analyzing ? 'Analyzing charts…' : 'Analyze chart' }}<span class="arrow">→</span></button>
         @if (analysisError) { <p class="analysis-error" role="alert">{{ analysisError }}</p> }
       </div>
       <div class="privacy-note"><span>⌁</span><p>Your chart is sent to Google Gemini only when you analyze it. No order will be placed.</p></div>
@@ -39,8 +40,11 @@
       <div class="chart-header"><div><span class="live-pill"><span></span> CHART IMAGE</span><h2>{{ analysis?.instrument || instrument.replace(' perpetual', '') }} <span>{{ analysis?.timeframe || 'Perpetual' }}</span></h2></div><div class="price-block"><strong>{{ analysis ? 'ANALYSIS READY' : 'IMAGE PREVIEW' }}</strong><span>{{ analysis ? analysis.confidence + '% confidence' : 'Upload a chart to begin' }}</span></div></div>
       <div class="chart-toolbar"><span class="timeframe active">1D</span><span>4H</span><span>1H</span><span>15m</span><span class="toolbar-spacer"></span><span class="tool-icon">⌗</span><span class="tool-icon">⚙</span></div>
       <div class="chart-wrap">
-        @if (preview; as imagePreview) {
-          <img class="uploaded-chart" [src]="imagePreview" alt="Uploaded chart being analyzed" />
+        @if (dailyPreview || hourlyPreview) {
+          <div class="multi-chart-preview">
+            @if (dailyPreview; as dailyImage) { <figure><figcaption>1D · Daily context</figcaption><img [src]="dailyImage" alt="Uploaded 1D chart" /></figure> }
+            @if (hourlyPreview; as hourlyImage) { <figure><figcaption>1H · Entry context</figcaption><img [src]="hourlyImage" alt="Uploaded 1H chart" /></figure> }
+          </div>
         } @else {
           <div class="empty-chart">Select a PNG or JPG chart to preview it here.</div>
         }
