@@ -1,0 +1,57 @@
+<main class="app-shell">
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">T</span><span>Trade<span class="brand-accent">Guru</span></span></div>
+    <nav><a class="active" href="#workspace">Workspace</a><a href="#history">Signal history</a></nav>
+    <div class="status"><span class="status-dot"></span> Paper mode <span class="avatar">AK</span></div>
+  </header>
+
+  <section class="intro" id="workspace">
+    <div><p class="eyebrow">CHART INTELLIGENCE / 01</p><h1>Read the market<br /><em>before</em> you trade.</h1><p class="intro-copy">Upload a clean 1D chart and get a structured setup with levels, risk, and a reason to stay out.</p></div>
+    <div class="session-note"><span>◷</span><div><strong>Analysis window</strong><br /><small>1 day · perpetual contracts</small></div></div>
+  </section>
+
+  <section class="workspace-grid">
+    <aside class="left-rail" aria-label="Chart upload and market settings">
+      <div class="panel upload-panel">
+        <div class="panel-heading"><span class="step">01</span><div><h2>Bring your chart</h2><p>PNG, JPG up to 10MB</p></div></div>
+        <label class="dropzone">
+          @if (preview; as imagePreview) {
+            <img [src]="imagePreview" alt="Uploaded trading chart preview" />
+          } @else {
+            <span class="upload-icon">↑</span><strong>Drop chart image here</strong><span>or click to browse</span>
+          }
+          <input #chartInput type="file" accept="image/png,image/jpeg" (change)="onFileChange($event)" />
+        </label>
+        <div class="file-row"><span class="file-icon">▧</span><span>{{ fileName }}</span>@if (preview) { <button class="remove" (click)="removeChart(chartInput)" aria-label="Remove chart">×</button> }</div>
+      </div>
+
+      <div class="panel settings-panel">
+        <div class="panel-heading"><span class="step">02</span><div><h2>Market context</h2><p>Help the model read the setup</p></div></div>
+        <label class="field-label">Instrument<select [value]="instrument" (change)="instrument = $any($event.target).value"><option>FARTCOINUSD perpetual</option><option>BTCUSDT perpetual</option><option>ETHUSDT perpetual</option><option>SOLUSDT perpetual</option></select></label>
+        <label class="field-label">Trade bias<select [value]="tradeBias" (change)="tradeBias = $any($event.target).value"><option>Both directions</option><option>Long setups only</option><option>Short setups only</option></select></label>
+        <button class="primary-button" (click)="onAnalyze()" [disabled]="!selectedFile || analyzing"><span>✦</span>{{ analyzing ? 'Analyzing chart…' : 'Analyze chart' }}<span class="arrow">→</span></button>
+        @if (analysisError) { <p class="analysis-error" role="alert">{{ analysisError }}</p> }
+      </div>
+      <div class="privacy-note"><span>⌁</span><p>Your chart is sent to Google Gemini only when you analyze it. No order will be placed.</p></div>
+    </aside>
+
+    <section class="chart-panel panel">
+      <div class="chart-header"><div><span class="live-pill"><span></span> CHART IMAGE</span><h2>{{ analysis?.instrument || instrument.replace(' perpetual', '') }} <span>{{ analysis?.timeframe || 'Perpetual' }}</span></h2></div><div class="price-block"><strong>{{ analysis ? 'ANALYSIS READY' : 'IMAGE PREVIEW' }}</strong><span>{{ analysis ? analysis.confidence + '% confidence' : 'Upload a chart to begin' }}</span></div></div>
+      <div class="chart-toolbar"><span class="timeframe active">1D</span><span>4H</span><span>1H</span><span>15m</span><span class="toolbar-spacer"></span><span class="tool-icon">⌗</span><span class="tool-icon">⚙</span></div>
+      <div class="chart-wrap">
+        @if (preview; as imagePreview) {
+          <img class="uploaded-chart" [src]="imagePreview" alt="Uploaded chart being analyzed" />
+        } @else {
+          <div class="empty-chart">Select a PNG or JPG chart to preview it here.</div>
+        }
+      </div>
+      <div class="chart-legend">{{ analysis ? 'Levels are estimated from the uploaded chart by Gemini.' : 'Analysis levels will appear after chart analysis.' }}</div>
+    </section>
+
+    <aside class="right-rail" aria-label="Chart analysis and position planning">
+      <div class="panel verdict-panel"><div class="verdict-top"><span class="step">03</span><span class="confidence">{{ analysis ? analysis.confidence + '% confidence' : analyzing ? 'Reading chart…' : 'Awaiting chart' }}</span></div><p class="eyebrow">GEMINI CHART READ</p><h2>{{ analysis?.bias === 'LONG' ? 'Long setup' : analysis?.bias === 'SHORT' ? 'Short setup' : analysis?.bias === 'NO_TRADE' ? 'No trade setup' : 'Analysis pending' }}</h2><p class="verdict-copy">{{ analysis?.rationale || (analyzing ? 'Extracting the visible price scale and chart structure.' : 'Upload a chart and run analysis to get image-based levels.') }}</p><div class="signal-card"><div><span class="signal-label">DIRECTION</span><strong>{{ analysis?.bias || '--' }}</strong></div><div class="signal-badge">{{ analysis ? 'GEMINI' : 'WAITING' }}</div></div><div class="metric-grid"><div><span>Entry point</span><strong>{{ formatPrice(analysis?.entry) }}</strong></div><div><span>Stop-loss</span><strong>{{ formatPrice(analysis?.stopLoss) }}</strong></div><div><span>Target</span><strong>{{ formatPrice(analysis?.target) }}</strong></div><div><span>Risk / reward</span><strong>{{ riskReward }}</strong></div></div></div>
+      <div class="panel risk-panel"><div class="panel-title"><h2>Position planner</h2><span class="help">?</span></div><label class="field-label">Risk per trade <div class="input-wrap"><span>$</span><input [value]="riskAmount" (input)="onRiskChange($event)" min="0.01" step="1" type="number" /></div></label><div class="risk-result"><span>Position size at risk budget</span><strong>{{ suggestedSize }} {{ analysis?.instrument || '' }}</strong><small>Calculated as risk budget divided by entry-to-stop distance.</small></div></div>
+    </aside>
+  </section>
+  <footer><span>DeltaLens <b>v0.1 demo</b></span><span>Analysis is informational, not financial advice. Always manage your own risk.</span><span>Data delayed · Paper mode</span></footer>
+</main>
