@@ -38,3 +38,14 @@ export default defineConfig([
   npm run build
   ```
       // other options...
+
+      /*{
+    "instrument": "FARTCOINUSD",
+    "timeframe": "1D + 1H",
+    "bias": "LONG",
+    "entry": 0.1805,
+    "stopLoss": 0.165,
+    "target": 0.195,
+    "confidence": 65,
+    "rationale": "The 1D chart shows a strong recovery bounce off local lows near 0.1400 with recent bullish momentum testing 0.1800 levels. The 1H chart indicates a sharp rejection and V-shaped rebound from lows near 0.1620, currently forming green continuation candles trading around 0.1805. Entry is set at current price 0.1805, stop loss below the recent swing low support at 0.1650, and target near the local resistance/supply level at 0.1950."
+}*/
