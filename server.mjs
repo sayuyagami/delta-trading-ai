@@ -6,6 +6,8 @@ const maxImageBytes = 10 * 1024 * 1024
 const maxRequestBytes = 28 * 1024 * 1024
 const apiKey = process.env.GEMINI_API_KEY
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null
+const primaryModel = process.env.GEMINI_MODEL || 'models/gemini-3.8-flash'
+const fallbackModel = process.env.GEMINI_FALLBACK_MODEL || 'models/gemini-3.5-flash-lite'
 
 const responseSchema = {
   type: Type.OBJECT,
@@ -74,6 +76,17 @@ function normalizeAnalysis(raw, requestedInstrument) {
   }
 }
 
+async function generateAnalysis(request) {
+  try {
+    return await ai.models.generateContent({ model: primaryModel, ...request })
+  } catch (error) {
+    if (error?.status !== 503 || primaryModel === fallbackModel) throw error
+
+    console.warn(`Gemini model ${primaryModel} returned 503; retrying with ${fallbackModel}.`)
+    return ai.models.generateContent({ model: fallbackModel, ...request })
+  }
+}
+
 const server = createServer(async (request, response) => {
   if (request.method !== 'POST' || request.url !== '/api/analyze') {
     sendJson(response, 404, { error: 'Not found.' })
@@ -116,8 +129,7 @@ const server = createServer(async (request, response) => {
 
     const requestedInstrument = typeof instrument === 'string' ? instrument.slice(0, 60) : 'Unknown instrument'
     const requestedBias = typeof tradeBias === 'string' ? tradeBias.slice(0, 40) : 'Both directions'
-    const result = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'models/gemini-3.8-flash',
+    const result = await generateAnalysis({
       contents: [{
         role: 'user',
         parts: [
@@ -140,9 +152,16 @@ const server = createServer(async (request, response) => {
     sendJson(response, 200, normalizeAnalysis(result.text, requestedInstrument))
   } catch (error) {
     const status = error?.status || 502
-    const message = status < 500 && error instanceof Error
-      ? error.message
-      : 'Chart analysis failed. Check the Gemini API key and try again.'
+    let message = 'Gemini could not complete the request. Try again shortly.'
+    if (status === 503) {
+      message = 'Gemini is temporarily overloaded on the primary and fallback models. Try again shortly.'
+    } else if (status === 429) {
+      message = 'Gemini request quota reached. Check your API quota or try again later.'
+    } else if (status === 401 || status === 403) {
+      message = 'Gemini rejected the API key. Verify GEMINI_API_KEY and restart the API server.'
+    } else if (status < 500 && error instanceof Error) {
+      message = error.message
+    }
     console.error('Chart analysis failed:', error)
     sendJson(response, status, { error: message })
   }
