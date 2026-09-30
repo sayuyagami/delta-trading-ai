@@ -11,7 +11,7 @@ interface ChartAnalysis {
   rationale: string
 }
 
-type ChartTimeframe = '4H'
+type ChartTimeframe = '1H'
 
 @Component({
   selector: 'app-root',
@@ -21,9 +21,9 @@ type ChartTimeframe = '4H'
 export class AppComponent implements OnDestroy {
   constructor(private readonly changeDetector: ChangeDetectorRef) {}
 
-  fourHourFile: File | null = null
-  fourHourFileName = 'No 4H chart selected'
-  fourHourPreview: string | null = null
+  oneHourFile: File | null = null
+  oneHourFileName = 'No 1H chart selected'
+  oneHourPreview: string | null = null
   analysis: ChartAnalysis | null = null
   analysisError = ''
   analyzing = false
@@ -32,7 +32,7 @@ export class AppComponent implements OnDestroy {
   tradeBias = 'Both directions'
 
   get hasCharts(): boolean {
-    return Boolean(this.fourHourFile)
+    return Boolean(this.oneHourFile)
   }
 
   onFileChange(event: Event, timeframe: ChartTimeframe): void {
@@ -75,7 +75,7 @@ export class AppComponent implements OnDestroy {
 
     try {
       const charts = []
-      for (const timeframe of ['4H'] as const) {
+      for (const timeframe of ['1H'] as const) {
         const file = this.chartFile()
         if (file) charts.push({ timeframe, mimeType: file.type, data: await this.readImage(file) })
       }
@@ -148,23 +148,23 @@ export class AppComponent implements OnDestroy {
   }
 
   private chartFile(): File | null {
-    return this.fourHourFile
+    return this.oneHourFile
   }
 
   private setChartFile(file: File | null): void {
-    this.fourHourFile = file
+    this.oneHourFile = file
   }
 
   private setChartFileName(fileName: string): void {
-    this.fourHourFileName = fileName
+    this.oneHourFileName = fileName
   }
 
   private setChartPreview(preview: string | null): void {
-    this.fourHourPreview = preview
+    this.oneHourPreview = preview
   }
 
   private releasePreview(): void {
-    const preview = this.fourHourPreview
+    const preview = this.oneHourPreview
     if (preview) URL.revokeObjectURL(preview)
     this.setChartPreview(null)
   }

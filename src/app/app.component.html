@@ -6,8 +6,8 @@
   </header>
 
   <section class="intro" id="workspace">
-    <div><p class="eyebrow">CHART INTELLIGENCE / 01</p><h1>Read the market<br /><em>before</em> you trade.</h1><p class="intro-copy">Upload a 4H chart for approximate levels, risk, and a reason to stay out.</p></div>
-    <div class="session-note"><span>◷</span><div><strong>Analysis window</strong><br /><small>4H · perpetual contracts</small></div></div>
+    <div><p class="eyebrow">CHART INTELLIGENCE / 01</p><h1>Read the market<br /><em>before</em> you trade.</h1><p class="intro-copy">Upload a 1H chart for approximate levels, risk, and a reason to stay out.</p></div>
+    <div class="session-note"><span>◷</span><div><strong>Analysis window</strong><br /><small>1H · perpetual contracts</small></div></div>
   </section>
 
   <section class="workspace-grid" aria-label="Chart analysis workspace">
@@ -15,30 +15,30 @@
       <div class="panel upload-panel">
         <div class="panel-heading"><span class="step">01</span><div><h2>Bring your chart</h2><p>PNG, JPG up to 10MB</p></div></div>
         <label class="dropzone">
-          <span class="upload-icon">↑</span><strong>4H chart</strong><span>PNG or JPG, under 10MB</span>
-          <input #fourHourChartInput type="file" accept="image/png,image/jpeg" (change)="onFileChange($event, '4H')" />
+          <span class="upload-icon">↑</span><strong>1H chart</strong><span>PNG or JPG, under 10MB</span>
+          <input #oneHourChartInput type="file" accept="image/png,image/jpeg" (change)="onFileChange($event, '1H')" />
         </label>
-        <div class="file-row" aria-live="polite"><span class="file-icon">▧</span><span class="file-name">{{ fourHourFileName }}</span>@if (fourHourFile) { <span class="file-status">Ready</span><button class="remove" (click)="removeChart(fourHourChartInput, '4H')" aria-label="Remove 4H chart">×</button> } @else { <span class="file-status pending">Required</span> }</div>
+        <div class="file-row" aria-live="polite"><span class="file-icon">▧</span><span class="file-name">{{ oneHourFileName }}</span>@if (oneHourFile) { <span class="file-status">Ready</span><button class="remove" (click)="removeChart(oneHourChartInput, '1H')" aria-label="Remove 1H chart">×</button> } @else { <span class="file-status pending">Required</span> }</div>
       </div>
 
       <div class="panel settings-panel">
         <div class="panel-heading"><span class="step">02</span><div><h2>Market context</h2><p>Help the model read the setup</p></div></div>
         <label class="field-label">Instrument<select [value]="instrument" (change)="instrument = $any($event.target).value"><option>FARTCOINUSD perpetual</option><option>BTCUSDT perpetual</option><option>ETHUSDT perpetual</option><option>SOLUSDT perpetual</option></select></label>
         <label class="field-label">Trade bias<select [value]="tradeBias" (change)="tradeBias = $any($event.target).value"><option>Both directions</option><option>Long setups only</option><option>Short setups only</option></select></label>
-        <button class="primary-button" (click)="onAnalyze()" [disabled]="!hasCharts || analyzing" [attr.aria-busy]="analyzing"><span aria-hidden="true">✦</span>{{ analyzing ? 'Reading your chart…' : 'Analyze 4H chart' }}<span class="arrow" aria-hidden="true">→</span></button>
-        @if (analysisError) { <p class="analysis-error" role="alert">{{ analysisError }}</p> } @else if (!hasCharts) { <p class="action-hint">Add your 4H screenshot to unlock analysis.</p> }
+        <button class="primary-button" (click)="onAnalyze()" [disabled]="!hasCharts || analyzing" [attr.aria-busy]="analyzing"><span aria-hidden="true">✦</span>{{ analyzing ? 'Reading your chart…' : 'Analyze 1H chart' }}<span class="arrow" aria-hidden="true">→</span></button>
+        @if (analysisError) { <p class="analysis-error" role="alert">{{ analysisError }}</p> } @else if (!hasCharts) { <p class="action-hint">Add your 1H screenshot to unlock analysis.</p> }
       </div>
       <div class="privacy-note"><span>⌁</span><p>Your chart is sent to Google Gemini only when you analyze it. No order will be placed.</p></div>
     </aside>
 
     <section class="chart-panel panel">
       <div class="chart-header"><div><span class="live-pill"><span></span> CHART IMAGE</span><h2>{{ analysis?.instrument || instrument.replace(' perpetual', '') }} <span>{{ analysis?.timeframe || 'Perpetual' }}</span></h2></div><div class="price-block"><strong>{{ analysis ? 'ANALYSIS READY' : 'IMAGE PREVIEW' }}</strong><span>{{ analysis ? analysis.confidence + '% confidence' : 'Upload a chart to begin' }}</span></div></div>
-      <div class="chart-toolbar"><span class="timeframe active">4H</span><span class="toolbar-spacer"></span><span class="tool-icon">⌗</span><span class="tool-icon">⚙</span></div>
+      <div class="chart-toolbar"><span class="timeframe active">1H</span><span class="toolbar-spacer"></span><span class="tool-icon">⌗</span><span class="tool-icon">⚙</span></div>
       <div class="chart-wrap" [attr.aria-busy]="analyzing">
-        @if (fourHourPreview; as fourHourImage) {
-          <figure class="uploaded-chart-frame"><figcaption>4H chart</figcaption><img class="uploaded-chart" [src]="fourHourImage" alt="Uploaded 4H chart" /></figure>
+        @if (oneHourPreview; as oneHourImage) {
+          <figure class="uploaded-chart-frame"><figcaption>1H chart</figcaption><img class="uploaded-chart" [src]="oneHourImage" alt="Uploaded 1H chart" /></figure>
         } @else {
-          <div class="empty-chart"><span class="empty-chart-icon" aria-hidden="true">↑</span><strong>Your chart preview will appear here</strong><span>Upload a clear 4H PNG or JPG screenshot to begin.</span></div>
+          <div class="empty-chart"><span class="empty-chart-icon" aria-hidden="true">↑</span><strong>Your chart preview will appear here</strong><span>Upload a clear 1H PNG or JPG screenshot to begin.</span></div>
         }
       </div>
       <div class="chart-legend">{{ analysis ? 'Levels are estimated from the uploaded chart by Gemini.' : 'Analysis levels will appear after chart analysis.' }}</div>

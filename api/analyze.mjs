@@ -40,7 +40,7 @@ function normalizeAnalysis(raw, requestedInstrument) {
       : requestedInstrument,
     timeframe: typeof result.timeframe === 'string' && result.timeframe.trim()
       ? result.timeframe.slice(0, 20)
-      : '4H',
+      : '1H',
     bias,
     entry: bias === 'NO_TRADE' ? null : entry,
     stopLoss: bias === 'NO_TRADE' ? null : stopLoss,
@@ -73,16 +73,16 @@ export default async function handler(request, response) {
     const body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body || {}
     const { charts: chartInputs, instrument, tradeBias } = body
     if (!Array.isArray(chartInputs) || chartInputs.length !== 1) {
-      response.status(400).json({ error: 'Provide one 4H chart image.' })
+      response.status(400).json({ error: 'Provide one 1H chart image.' })
       return
     }
 
     const chart = chartInputs[0] || {}
     const { timeframe, mimeType, data } = chart
-    if (timeframe !== '4H' || !['image/png', 'image/jpeg'].includes(mimeType)
+    if (timeframe !== '1H' || !['image/png', 'image/jpeg'].includes(mimeType)
       || typeof data !== 'string'
       || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(data)) {
-      response.status(400).json({ error: 'Provide a valid PNG or JPG chart labeled 4H.' })
+      response.status(400).json({ error: 'Provide a valid PNG or JPG chart labeled 1H.' })
       return
     }
 
@@ -100,9 +100,9 @@ export default async function handler(request, response) {
         role: 'user',
         parts: [
           {
-            text: `Analyze the supplied 4H trading chart image for ${requestedInstrument}. Use the 4H chart for trend, support/resistance, a potential entry, invalidation stop-loss, and first target. Set timeframe to 4H. Requested trade bias: ${requestedBias}. Read prices only when supported by the visible price axis; never invent a scale or levels. Respect the requested bias. If the image is unreadable, lacks a legible price scale, or shows no clear setup, return bias NO_TRADE and set entry, stopLoss, and target to 0. Confidence is 0-100. Give a concise rationale citing visible chart evidence and uncertainty. These are approximate educational estimates, not financial advice.`,
+            text: `Analyze the supplied 1H trading chart image for ${requestedInstrument}. Use the 1H chart for trend, support/resistance, a potential entry, invalidation stop-loss, and first target. Set timeframe to 1H. Requested trade bias: ${requestedBias}. Read prices only when supported by the visible price axis; never invent a scale or levels. Respect the requested bias. If the image is unreadable, lacks a legible price scale, or shows no clear setup, return bias NO_TRADE and set entry, stopLoss, and target to 0. Confidence is 0-100. Give a concise rationale citing visible chart evidence and uncertainty. These are approximate educational estimates, not financial advice.`,
           },
-          { text: 'The following image is the 4H chart.' },
+          { text: 'The following image is the 1H chart.' },
           { inlineData: { mimeType, data: image.toString('base64') } },
         ],
       }],
