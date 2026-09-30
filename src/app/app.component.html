@@ -6,8 +6,8 @@
   </header>
 
   <section class="intro" id="workspace">
-    <div><p class="eyebrow">CHART INTELLIGENCE / 01</p><h1>Read the market<br /><em>before</em> you trade.</h1><p class="intro-copy">Add 1D context and a 1H chart for approximate levels, risk, and a reason to stay out.</p></div>
-    <div class="session-note"><span>◷</span><div><strong>Analysis window</strong><br /><small>1D + 1H · perpetual contracts</small></div></div>
+    <div><p class="eyebrow">CHART INTELLIGENCE / 01</p><h1>Read the market<br /><em>before</em> you trade.</h1><p class="intro-copy">Upload a 4H chart for approximate levels, risk, and a reason to stay out.</p></div>
+    <div class="session-note"><span>◷</span><div><strong>Analysis window</strong><br /><small>4H · perpetual contracts</small></div></div>
   </section>
 
   <section class="workspace-grid">
@@ -15,15 +15,10 @@
       <div class="panel upload-panel">
         <div class="panel-heading"><span class="step">01</span><div><h2>Bring your chart</h2><p>PNG, JPG up to 10MB</p></div></div>
         <label class="dropzone">
-          <span class="upload-icon">↑</span><strong>1D daily chart</strong><span>PNG or JPG, under 10MB</span>
-          <input #dailyChartInput type="file" accept="image/png,image/jpeg" (change)="onFileChange($event, '1D')" />
+          <span class="upload-icon">↑</span><strong>4H chart</strong><span>PNG or JPG, under 10MB</span>
+          <input #fourHourChartInput type="file" accept="image/png,image/jpeg" (change)="onFileChange($event, '4H')" />
         </label>
-        <div class="file-row"><span class="file-icon">▧</span><span>{{ dailyFileName }}</span>@if (dailyFile) { <button class="remove" (click)="removeChart(dailyChartInput, '1D')" aria-label="Remove 1D chart">×</button> }</div>
-        <label class="dropzone timeframe-upload">
-          <span class="upload-icon">↑</span><strong>1H hourly chart</strong><span>PNG or JPG, under 10MB</span>
-          <input #hourlyChartInput type="file" accept="image/png,image/jpeg" (change)="onFileChange($event, '1H')" />
-        </label>
-        <div class="file-row"><span class="file-icon">▧</span><span>{{ hourlyFileName }}</span>@if (hourlyFile) { <button class="remove" (click)="removeChart(hourlyChartInput, '1H')" aria-label="Remove 1H chart">×</button> }</div>
+        <div class="file-row"><span class="file-icon">▧</span><span>{{ fourHourFileName }}</span>@if (fourHourFile) { <button class="remove" (click)="removeChart(fourHourChartInput, '4H')" aria-label="Remove 4H chart">×</button> }</div>
       </div>
 
       <div class="panel settings-panel">
@@ -38,13 +33,10 @@
 
     <section class="chart-panel panel">
       <div class="chart-header"><div><span class="live-pill"><span></span> CHART IMAGE</span><h2>{{ analysis?.instrument || instrument.replace(' perpetual', '') }} <span>{{ analysis?.timeframe || 'Perpetual' }}</span></h2></div><div class="price-block"><strong>{{ analysis ? 'ANALYSIS READY' : 'IMAGE PREVIEW' }}</strong><span>{{ analysis ? analysis.confidence + '% confidence' : 'Upload a chart to begin' }}</span></div></div>
-      <div class="chart-toolbar"><span class="timeframe active">1D</span><span>4H</span><span>1H</span><span>15m</span><span class="toolbar-spacer"></span><span class="tool-icon">⌗</span><span class="tool-icon">⚙</span></div>
+      <div class="chart-toolbar"><span class="timeframe active">4H</span><span class="toolbar-spacer"></span><span class="tool-icon">⌗</span><span class="tool-icon">⚙</span></div>
       <div class="chart-wrap">
-        @if (dailyPreview || hourlyPreview) {
-          <div class="multi-chart-preview">
-            @if (dailyPreview; as dailyImage) { <figure><figcaption>1D · Daily context</figcaption><img [src]="dailyImage" alt="Uploaded 1D chart" /></figure> }
-            @if (hourlyPreview; as hourlyImage) { <figure><figcaption>1H · Entry context</figcaption><img [src]="hourlyImage" alt="Uploaded 1H chart" /></figure> }
-          </div>
+        @if (fourHourPreview; as fourHourImage) {
+          <figure class="uploaded-chart-frame"><figcaption>4H chart</figcaption><img class="uploaded-chart" [src]="fourHourImage" alt="Uploaded 4H chart" /></figure>
         } @else {
           <div class="empty-chart">Select a PNG or JPG chart to preview it here.</div>
         }

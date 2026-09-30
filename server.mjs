@@ -34,7 +34,7 @@ async function readJson(request) {
   let size = 0
   for await (const chunk of request) {
     size += chunk.length
-    if (size > maxRequestBytes) throw Object.assign(new Error('Chart images exceed the combined 20 MB limit.'), { status: 413 })
+    if (size > maxRequestBytes) throw Object.assign(new Error('Chart image exceeds the request size limit.'), { status: 413 })
     chunks.push(chunk)
   }
   try {
@@ -100,8 +100,8 @@ const server = createServer(async (request, response) => {
   try {
     const body = await readJson(request)
     const { charts: chartInputs, instrument, tradeBias } = body
-    if (!Array.isArray(chartInputs) || chartInputs.length < 1 || chartInputs.length > 2) {
-      sendJson(response, 400, { error: 'Provide one or two chart images labeled 1D or 1H.' })
+    if (!Array.isArray(chartInputs) || chartInputs.length !== 1) {
+      sendJson(response, 400, { error: 'Provide one 4H chart image.' })
       return
     }
 
@@ -110,10 +110,10 @@ const server = createServer(async (request, response) => {
     let totalImageBytes = 0
     for (const chart of chartInputs) {
       const { timeframe, mimeType, data } = chart || {}
-      if (!['1D', '1H'].includes(timeframe) || seenTimeframes.has(timeframe)
+      if (timeframe !== '4H' || seenTimeframes.has(timeframe)
         || !['image/png', 'image/jpeg'].includes(mimeType) || typeof data !== 'string'
         || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(data)) {
-        sendJson(response, 400, { error: 'Provide valid PNG or JPG charts labeled 1D or 1H.' })
+        sendJson(response, 400, { error: 'Provide a valid PNG or JPG chart labeled 4H.' })
         return
       }
 
@@ -134,7 +134,7 @@ const server = createServer(async (request, response) => {
         role: 'user',
         parts: [
           {
-            text: `Analyze the supplied trading chart images for ${requestedInstrument}. Each image is labeled with its timeframe. Use the 1D chart for broader trend and major support/resistance, and the 1H chart for a potential entry, invalidation stop-loss, and first target. Set timeframe to the supplied timeframe labels joined together, such as 1D + 1H. Requested trade bias: ${requestedBias}. Read prices only when supported by the visible price axis; never invent a scale or levels. If the charts disagree about current price, state that uncertainty in the rationale. Respect the requested bias. If the images are unreadable, lack a legible price scale, or show no clear setup, return bias NO_TRADE and set entry, stopLoss, and target to 0. Confidence is 0-100. Give a concise rationale citing visible chart evidence and uncertainty. These are approximate educational estimates, not financial advice.`,
+            text: `Analyze the supplied 4H trading chart image for ${requestedInstrument}. Use the 4H chart for trend, support/resistance, a potential entry, invalidation stop-loss, and first target. Set timeframe to 4H. Requested trade bias: ${requestedBias}. Read prices only when supported by the visible price axis; never invent a scale or levels. Respect the requested bias. If the image is unreadable, lacks a legible price scale, or shows no clear setup, return bias NO_TRADE and set entry, stopLoss, and target to 0. Confidence is 0-100. Give a concise rationale citing visible chart evidence and uncertainty. These are approximate educational estimates, not financial advice.`,
           },
           ...charts.flatMap(chart => [
             { text: `The following image is the ${chart.timeframe} chart.` },

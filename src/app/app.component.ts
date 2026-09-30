@@ -11,7 +11,7 @@ interface ChartAnalysis {
   rationale: string
 }
 
-type ChartTimeframe = '1D' | '1H'
+type ChartTimeframe = '4H'
 
 @Component({
   selector: 'app-root',
@@ -21,12 +21,9 @@ type ChartTimeframe = '1D' | '1H'
 export class AppComponent implements OnDestroy {
   constructor(private readonly changeDetector: ChangeDetectorRef) {}
 
-  dailyFile: File | null = null
-  hourlyFile: File | null = null
-  dailyFileName = 'No 1D chart selected'
-  hourlyFileName = 'No 1H chart selected'
-  dailyPreview: string | null = null
-  hourlyPreview: string | null = null
+  fourHourFile: File | null = null
+  fourHourFileName = 'No 4H chart selected'
+  fourHourPreview: string | null = null
   analysis: ChartAnalysis | null = null
   analysisError = ''
   analyzing = false
@@ -35,7 +32,7 @@ export class AppComponent implements OnDestroy {
   tradeBias = 'Both directions'
 
   get hasCharts(): boolean {
-    return Boolean(this.dailyFile || this.hourlyFile)
+    return Boolean(this.fourHourFile)
   }
 
   onFileChange(event: Event, timeframe: ChartTimeframe): void {
@@ -46,24 +43,24 @@ export class AppComponent implements OnDestroy {
     this.analysis = null
     this.analysisError = ''
     if (!['image/png', 'image/jpeg'].includes(file.type) || file.size > 10 * 1024 * 1024) {
-      this.releasePreview(timeframe)
-      this.setChartFile(timeframe, null)
-      this.setChartFileName(timeframe, `No ${timeframe} chart selected`)
+      this.releasePreview()
+      this.setChartFile(null)
+      this.setChartFileName(`No ${timeframe} chart selected`)
       input.value = ''
       this.analysisError = `Choose a PNG or JPG ${timeframe} chart smaller than 10 MB.`
       return
     }
 
-    this.releasePreview(timeframe)
-    this.setChartFile(timeframe, file)
-    this.setChartFileName(timeframe, file.name)
-    this.setChartPreview(timeframe, URL.createObjectURL(file))
+    this.releasePreview()
+    this.setChartFile(file)
+    this.setChartFileName(file.name)
+    this.setChartPreview(URL.createObjectURL(file))
   }
 
   removeChart(input: HTMLInputElement, timeframe: ChartTimeframe): void {
-    this.releasePreview(timeframe)
-    this.setChartFile(timeframe, null)
-    this.setChartFileName(timeframe, `No ${timeframe} chart selected`)
+    this.releasePreview()
+    this.setChartFile(null)
+    this.setChartFileName(`No ${timeframe} chart selected`)
     this.analysis = null
     this.analysisError = ''
     input.value = ''
@@ -78,8 +75,8 @@ export class AppComponent implements OnDestroy {
 
     try {
       const charts = []
-      for (const timeframe of ['1D', '1H'] as const) {
-        const file = this.chartFile(timeframe)
+      for (const timeframe of ['4H'] as const) {
+        const file = this.chartFile()
         if (file) charts.push({ timeframe, mimeType: file.type, data: await this.readImage(file) })
       }
       const response = await fetch('/api/analyze', {
@@ -147,32 +144,28 @@ export class AppComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.releasePreview('1D')
-    this.releasePreview('1H')
+    this.releasePreview()
   }
 
-  private chartFile(timeframe: ChartTimeframe): File | null {
-    return timeframe === '1D' ? this.dailyFile : this.hourlyFile
+  private chartFile(): File | null {
+    return this.fourHourFile
   }
 
-  private setChartFile(timeframe: ChartTimeframe, file: File | null): void {
-    if (timeframe === '1D') this.dailyFile = file
-    else this.hourlyFile = file
+  private setChartFile(file: File | null): void {
+    this.fourHourFile = file
   }
 
-  private setChartFileName(timeframe: ChartTimeframe, fileName: string): void {
-    if (timeframe === '1D') this.dailyFileName = fileName
-    else this.hourlyFileName = fileName
+  private setChartFileName(fileName: string): void {
+    this.fourHourFileName = fileName
   }
 
-  private setChartPreview(timeframe: ChartTimeframe, preview: string | null): void {
-    if (timeframe === '1D') this.dailyPreview = preview
-    else this.hourlyPreview = preview
+  private setChartPreview(preview: string | null): void {
+    this.fourHourPreview = preview
   }
 
-  private releasePreview(timeframe: ChartTimeframe): void {
-    const preview = timeframe === '1D' ? this.dailyPreview : this.hourlyPreview
+  private releasePreview(): void {
+    const preview = this.fourHourPreview
     if (preview) URL.revokeObjectURL(preview)
-    this.setChartPreview(timeframe, null)
+    this.setChartPreview(null)
   }
 }
