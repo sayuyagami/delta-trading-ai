@@ -1,4 +1,4 @@
-import { Component, OnDestroy } from '@angular/core'
+import { ChangeDetectorRef, Component, OnDestroy } from '@angular/core'
 
 interface ChartAnalysis {
   instrument: string
@@ -19,6 +19,8 @@ type ChartTimeframe = '1D' | '1H'
   templateUrl: './app.component.html',
 })
 export class AppComponent implements OnDestroy {
+  constructor(private readonly changeDetector: ChangeDetectorRef) {}
+
   dailyFile: File | null = null
   hourlyFile: File | null = null
   dailyFileName = 'No 1D chart selected'
@@ -100,6 +102,7 @@ export class AppComponent implements OnDestroy {
         : 'Could not analyze this chart. Please try again.'
     } finally {
       this.analyzing = false
+      this.changeDetector.markForCheck()
     }
   }
 
