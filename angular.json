@@ -23,7 +23,7 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/index.css", "src/App.css"]
+            "styles": ["src/index.css"]
           },
           "configurations": {
             "production": {

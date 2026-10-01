@@ -5,7 +5,9 @@ interface ChartAnalysis {
   timeframe: string
   bias: 'LONG' | 'SHORT' | 'NO_TRADE'
   entry: number | null
+  entryY: number | null
   stopLoss: number | null
+  stopLossY: number | null
   target: number | null
   confidence: number
   rationale: string
@@ -24,6 +26,7 @@ export class AppComponent implements OnDestroy {
   oneHourFile: File | null = null
   oneHourFileName = 'No 1H chart selected'
   oneHourPreview: string | null = null
+  oneHourImageAspectRatio = 1.8
   analysis: ChartAnalysis | null = null
   analysisError = ''
   analyzing = false
@@ -74,11 +77,10 @@ export class AppComponent implements OnDestroy {
     this.analyzing = true
 
     try {
-      const charts = []
-      for (const timeframe of ['1H'] as const) {
-        const file = this.chartFile()
-        if (file) charts.push({ timeframe, mimeType: file.type, data: await this.readImage(file) })
-      }
+      const file = this.chartFile()
+      const charts = file
+        ? [{ timeframe: '1H', mimeType: file.type, data: await this.readImage(file) }]
+        : []
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -106,6 +108,13 @@ export class AppComponent implements OnDestroy {
   onRiskChange(event: Event): void {
     const value = Number((event.target as HTMLInputElement).value)
     if (Number.isFinite(value) && value > 0) this.riskAmount = value
+  }
+
+  onPreviewLoad(event: Event): void {
+    const image = event.target as HTMLImageElement
+    if (image.naturalWidth && image.naturalHeight) {
+      this.oneHourImageAspectRatio = image.naturalWidth / image.naturalHeight
+    }
   }
 
   formatPrice(value: number | null | undefined): string {

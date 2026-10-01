@@ -17,7 +17,7 @@ If you are developing a production application, we recommend updating the config
 
 ```js
 export default defineConfig([
-  # DeltaLens
+  # TradeGuru
 
   An Angular chart-analysis dashboard. Uploaded charts are analyzed by Google Gemini through a local Node API; images are sent only after clicking Analyze.
 

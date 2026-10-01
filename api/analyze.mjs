@@ -10,28 +10,38 @@ const responseSchema = {
     timeframe: { type: Type.STRING },
     bias: { type: Type.STRING, enum: ['LONG', 'SHORT', 'NO_TRADE'] },
     entry: { type: Type.NUMBER },
+    entryY: { type: Type.NUMBER },
     stopLoss: { type: Type.NUMBER },
+    stopLossY: { type: Type.NUMBER },
     target: { type: Type.NUMBER },
     confidence: { type: Type.NUMBER },
     rationale: { type: Type.STRING },
   },
-  required: ['instrument', 'timeframe', 'bias', 'entry', 'stopLoss', 'target', 'confidence', 'rationale'],
+  required: ['instrument', 'timeframe', 'bias', 'entry', 'entryY', 'stopLoss', 'stopLossY', 'target', 'confidence', 'rationale'],
+}
+
+function hasValidLevels(result) {
+  if (result.bias === 'NO_TRADE') return true
+
+  const positionsAreValid = [result.entryY, result.stopLossY]
+    .every(value => Number.isFinite(value) && value >= 0 && value <= 100)
+  const longLevelsAreValid = result.bias === 'LONG'
+    && result.stopLoss < result.entry && result.entry < result.target
+  const shortLevelsAreValid = result.bias === 'SHORT'
+    && result.target < result.entry && result.entry < result.stopLoss
+
+  return positionsAreValid && (longLevelsAreValid || shortLevelsAreValid)
 }
 
 function normalizeAnalysis(raw, requestedInstrument) {
   const result = JSON.parse(raw)
-  const { bias, entry, stopLoss, target, confidence, rationale } = result
+  const { bias, entry, entryY, stopLoss, stopLossY, target, confidence, rationale } = result
   if (!['LONG', 'SHORT', 'NO_TRADE'].includes(bias)
     || ![entry, stopLoss, target, confidence].every(Number.isFinite)
+    || !hasValidLevels(result)
     || confidence < 0 || confidence > 100
     || typeof rationale !== 'string' || !rationale.trim()) {
     throw new Error('Gemini returned an incomplete chart analysis.')
-  }
-
-  if (bias !== 'NO_TRADE') {
-    const validLong = bias === 'LONG' && stopLoss < entry && entry < target
-    const validShort = bias === 'SHORT' && target < entry && entry < stopLoss
-    if (!validLong && !validShort) throw new Error('Gemini returned inconsistent entry, stop-loss, or target levels.')
   }
 
   return {
@@ -43,7 +53,9 @@ function normalizeAnalysis(raw, requestedInstrument) {
       : '1H',
     bias,
     entry: bias === 'NO_TRADE' ? null : entry,
+    entryY: bias === 'NO_TRADE' ? null : entryY,
     stopLoss: bias === 'NO_TRADE' ? null : stopLoss,
+    stopLossY: bias === 'NO_TRADE' ? null : stopLossY,
     target: bias === 'NO_TRADE' ? null : target,
     confidence,
     rationale: rationale.slice(0, 600),
@@ -100,7 +112,7 @@ export default async function handler(request, response) {
         role: 'user',
         parts: [
           {
-            text: `Analyze the supplied 1H trading chart image for ${requestedInstrument}. Use the 1H chart for trend, support/resistance, a potential entry, invalidation stop-loss, and first target. Set timeframe to 1H. Requested trade bias: ${requestedBias}. Read prices only when supported by the visible price axis; never invent a scale or levels. Respect the requested bias. If the image is unreadable, lacks a legible price scale, or shows no clear setup, return bias NO_TRADE and set entry, stopLoss, and target to 0. Confidence is 0-100. Give a concise rationale citing visible chart evidence and uncertainty. These are approximate educational estimates, not financial advice.`,
+            text: `Analyze the supplied 1H trading chart image for ${requestedInstrument}. Use the 1H chart for trend, support/resistance, a potential entry, invalidation stop-loss, and first target. Set timeframe to 1H. Requested trade bias: ${requestedBias}. Read prices only when supported by the visible price axis; never invent a scale or levels. For each entry and stop-loss, also return entryY and stopLossY: the estimated vertical position of that price as a percentage of the full uploaded image height, from its top edge (0) to bottom edge (100). Account for the chart's visible plotting area within the image. The positions must correspond to the returned prices; do not guess if the image does not support a clear placement. Respect the requested bias. If the image is unreadable, lacks a legible price scale, or shows no clear setup, return bias NO_TRADE and set entry, entryY, stopLoss, stopLossY, and target to 0. Confidence is 0-100. Give a concise rationale citing visible chart evidence and uncertainty. These are approximate educational estimates, not financial advice.`,
           },
           { text: 'The following image is the 1H chart.' },
           { inlineData: { mimeType, data: image.toString('base64') } },
