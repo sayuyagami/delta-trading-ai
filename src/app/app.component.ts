@@ -29,6 +29,12 @@ interface ChartAnalysis {
   rationale: string
 }
 
+interface SubscriptionStatus {
+  active: boolean
+  status: string
+  currentEnd: string | null
+}
+
 type ChartTimeframe = '1H'
 
 @Component({
@@ -44,6 +50,12 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   authUser: { email: string; name: string } | null = null
   authLoading = true
   authError = ''
+  subscription: SubscriptionStatus | null = null
+  subscriptionLoading = true
+  billingBusy = false
+  billingError = ''
+  subscriptionDialogOpen = false
+  private subscriptionExpiryTimer: ReturnType<typeof setTimeout> | null = null
   oneHourFile: File | null = null
   oneHourFileName = 'No 1H chart selected'
   oneHourPreview: string | null = null
@@ -95,6 +107,10 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   async onAnalyze(): Promise<void> {
+    if (!this.subscription?.active) {
+      this.openSubscriptionDialog()
+      return
+    }
     if (!this.hasCharts || this.analyzing) return
 
     this.analysis = null
@@ -116,6 +132,11 @@ export class AppComponent implements AfterViewInit, OnDestroy {
         }),
       })
       const result = await response.json() as ChartAnalysis | { error?: string }
+      if (response.status === 402) {
+        await this.refreshSubscription()
+        this.openSubscriptionDialog()
+        return
+      }
       if (!response.ok) {
         throw new Error('error' in result ? result.error : undefined)
       }
@@ -138,12 +159,73 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   async signOut(): Promise<void> {
     await fetch('/api/auth/session', { method: 'DELETE' })
     window.google?.accounts.id.disableAutoSelect()
+    this.clearSubscriptionExpiryTimer()
     this.authUser = null
+    this.subscription = null
+    this.subscriptionDialogOpen = false
     this.analysis = null
     this.authError = ''
     this.authLoading = true
     this.changeDetector.markForCheck()
     await this.initializeAuth()
+  }
+
+  openSubscriptionDialog(): void {
+    this.billingError = ''
+    this.subscriptionDialogOpen = true
+  }
+
+  closeSubscriptionDialog(): void {
+    this.subscriptionDialogOpen = false
+  }
+
+  formatSubscriptionDate(value: string): string {
+    return new Date(value).toLocaleDateString(undefined, { dateStyle: 'medium' })
+  }
+
+  async startSubscription(): Promise<void> {
+    if (!this.authUser || this.billingBusy) return
+
+    this.billingBusy = true
+    this.billingError = ''
+    try {
+      const response = await fetch('/api/subscription/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      })
+      const result = await response.json() as { merchantOrderId?: string; redirectUrl?: string; error?: string }
+      if (!response.ok || !result.merchantOrderId || !result.redirectUrl) {
+        throw new Error(result.error || 'Could not start the subscription checkout.')
+      }
+      sessionStorage.setItem('phonepeMerchantOrderId', result.merchantOrderId)
+      window.location.assign(result.redirectUrl)
+    } catch (error) {
+      this.billingError = error instanceof Error ? error.message : 'Could not open subscription checkout.'
+      this.billingBusy = false
+      this.changeDetector.markForCheck()
+    }
+  }
+
+  async refreshSubscription(): Promise<void> {
+    if (!this.authUser) return
+    this.subscriptionLoading = true
+    this.billingError = ''
+    try {
+      const response = await fetch('/api/subscription/status')
+      const result = await response.json() as SubscriptionStatus & { error?: string }
+      if (!response.ok) throw new Error(result.error || 'Could not check your subscription.')
+      this.subscription = result
+      if (result.status === 'completed') this.subscriptionDialogOpen = true
+      this.scheduleSubscriptionExpiry()
+    } catch (error) {
+      this.clearSubscriptionExpiryTimer()
+      this.subscription = null
+      this.billingError = error instanceof Error ? error.message : 'Could not check your subscription.'
+    } finally {
+      this.subscriptionLoading = false
+      this.changeDetector.markForCheck()
+    }
   }
 
   private async initializeAuth(): Promise<void> {
@@ -157,7 +239,11 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       const config = await configResponse.json() as { clientId: string }
       this.authUser = session.user
 
-      if (!this.authUser) {
+      if (this.authUser) {
+        await this.refreshSubscription()
+        await this.completePhonePeReturn()
+      } else {
+        this.subscriptionLoading = false
         if (!config.clientId) throw new Error('Google sign-in is not configured. Add GOOGLE_CLIENT_ID to the server environment.')
         await this.loadGoogleIdentityServices()
         window.google?.accounts.id.initialize({
@@ -193,6 +279,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       const result = await response.json() as { user?: { email: string; name: string }; error?: string }
       if (!response.ok || !result.user) throw new Error(result.error || 'Google sign-in could not be completed.')
       this.authUser = result.user
+      await this.refreshSubscription()
+      await this.completePhonePeReturn()
     } catch (error) {
       this.authError = error instanceof Error ? error.message : 'Google sign-in could not be completed.'
     } finally {
@@ -212,6 +300,54 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       script.onerror = () => reject(new Error('Could not load Google sign-in. Check your connection and reload.'))
       document.head.append(script)
     })
+  }
+
+  private async completePhonePeReturn(): Promise<void> {
+    const url = new URL(window.location.href)
+    const merchantOrderId = url.searchParams.get('phonepe_order_id')
+      || sessionStorage.getItem('phonepeMerchantOrderId')
+    if (!merchantOrderId) return
+
+    url.searchParams.delete('phonepe_order_id')
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+    this.subscriptionDialogOpen = true
+    this.billingBusy = true
+    this.billingError = ''
+    try {
+      await this.verifyPayment(merchantOrderId)
+      if (this.subscription?.active) sessionStorage.removeItem('phonepeMerchantOrderId')
+    } catch (error) {
+      this.billingError = error instanceof Error ? error.message : 'Could not verify PhonePe payment.'
+    } finally {
+      this.billingBusy = false
+      this.changeDetector.markForCheck()
+    }
+  }
+
+  private async verifyPayment(merchantOrderId: string): Promise<void> {
+    this.billingError = ''
+    try {
+      const response = await fetch('/api/subscription/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ merchantOrderId }),
+      })
+      const result = await response.json() as SubscriptionStatus & { error?: string }
+      if (!response.ok) throw new Error(result.error || 'Could not verify PhonePe payment.')
+      this.subscription = result
+      if (result.active) {
+        this.subscriptionDialogOpen = false
+        this.scheduleSubscriptionExpiry()
+      }
+      else this.billingError = result.status === 'pending'
+        ? 'PhonePe is still processing the payment. Check the status again shortly.'
+        : 'PhonePe has not confirmed this payment. Please try again.'
+    } catch (error) {
+      throw error instanceof Error ? error : new Error('Could not verify PhonePe payment.')
+    } finally {
+      this.billingBusy = false
+      this.changeDetector.markForCheck()
+    }
   }
 
   onPreviewLoad(event: Event): void {
@@ -257,7 +393,27 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.clearSubscriptionExpiryTimer()
     this.releasePreview()
+  }
+
+  private scheduleSubscriptionExpiry(): void {
+    this.clearSubscriptionExpiryTimer()
+    if (!this.subscription?.active || !this.subscription.currentEnd) return
+
+    const remaining = Date.parse(this.subscription.currentEnd) - Date.now()
+    if (remaining <= 0) {
+      this.subscription = { ...this.subscription, active: false, status: 'completed' }
+      this.subscriptionDialogOpen = true
+      return
+    }
+
+    this.subscriptionExpiryTimer = setTimeout(() => { void this.refreshSubscription() }, remaining)
+  }
+
+  private clearSubscriptionExpiryTimer(): void {
+    if (this.subscriptionExpiryTimer) clearTimeout(this.subscriptionExpiryTimer)
+    this.subscriptionExpiryTimer = null
   }
 
   private chartFile(): File | null {

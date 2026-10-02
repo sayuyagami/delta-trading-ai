@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from '@google/genai'
 import { readSession } from './_auth.mjs'
+import { BillingError, billingIsConfigured, handleBillingAction } from './_billing.mjs'
 
 const maxImageBytes = 10 * 1024 * 1024
 const primaryModel = process.env.GEMINI_MODEL || 'models/gemini-3.8-flash'
@@ -77,8 +78,26 @@ export default async function handler(request, response) {
     response.status(405).json({ error: 'Method not allowed.' })
     return
   }
-  if (!readSession(request)) {
+  const session = readSession(request)
+  if (!session) {
     response.status(401).json({ error: 'Sign in with Google to analyze charts.' })
+    return
+  }
+  if (!billingIsConfigured()) {
+    response.status(503).json({ error: 'Subscription billing is not configured on the server.' })
+    return
+  }
+  try {
+    const subscription = await handleBillingAction('status', session)
+    if (!subscription.active) {
+      response.status(402).json({ error: 'A paid one-month access pass is required to analyze charts.' })
+      return
+    }
+  } catch (error) {
+    const status = error instanceof BillingError ? error.status : 503
+    response.status(status).json({
+      error: error instanceof BillingError ? error.message : 'Could not verify subscription status.',
+    })
     return
   }
   if (!process.env.GEMINI_API_KEY) {

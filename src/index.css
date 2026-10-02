@@ -33,9 +33,11 @@ button, select { cursor: pointer; }
 .status { display: flex; align-items: center; gap: 8px; margin-left: auto; color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; }
 .status-dot, .live-pill span { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #7655d9; }
 .avatar { display: grid; place-items: center; width: 30px; height: 30px; margin-left: 8px; border: 1px solid var(--line); border-radius: 50%; background: #f7f5fc; color: #615080; font-size: 10px; }
-.account-email { max-width: 220px; overflow: hidden; text-overflow: ellipsis; text-transform: none; white-space: nowrap; }
-.sign-out { padding: 6px 9px; border: 1px solid var(--line); border-radius: 5px; background: white; color: var(--muted); font-size: 10px; }
-.sign-out:hover { border-color: var(--accent); color: var(--accent-dark); }
+.user-name { max-width: 180px; overflow: hidden; text-overflow: ellipsis; text-transform: none; white-space: nowrap; }
+.subscription-pill { padding: 4px 7px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 9px; line-height: 1; text-transform: none; }
+.subscription-pill-active { border-color: #b7dfcc; background: #eff9f3; color: #247653; }
+.manage-subscription, .sign-out { padding: 6px 9px; border: 1px solid var(--line); border-radius: 5px; background: white; color: var(--muted); font-size: 10px; text-transform: none; }
+.manage-subscription:hover, .sign-out:hover { border-color: var(--accent); color: var(--accent-dark); }
 
 .auth-gate { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(33, 30, 43, .58); backdrop-filter: blur(5px); }
 .auth-gate-hidden { display: none; }
@@ -49,7 +51,20 @@ button, select { cursor: pointer; }
 .auth-progress { display: flex; min-height: 42px; align-items: center; justify-content: center; gap: 9px; color: var(--muted); font-size: 12px; }
 .auth-progress .loading-dot { background: var(--accent); }
 .auth-error { margin: 12px 0 0; color: var(--red); font-size: 12px; line-height: 1.5; text-align: center; }
+.billing-output { display: block; margin: 12px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; text-align: center; }
 .auth-privacy { margin: 24px 0 0; color: var(--muted); font-size: 10px; text-align: center; }
+.subscription-dialog .eyebrow { margin-top: 0; }
+.subscription-price { display: flex; align-items: baseline; gap: 9px; margin: 20px 0 22px; color: var(--ink); }
+.subscription-price strong { font: 500 36px/1 Georgia, serif; }
+.subscription-price span { color: var(--muted); font-size: 12px; }
+.subscription-action { margin: 0 0 9px; }
+.secondary-button { width: 100%; min-height: 40px; margin-top: 9px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--ink); font-size: 12px; font-weight: 600; }
+.secondary-button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-dark); }
+.secondary-button:disabled { cursor: wait; opacity: .6; }
+.billing-detail, .billing-notice { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.billing-notice { color: #247653; }
+.dialog-close { display: block; margin: 14px auto 0; padding: 6px 10px; border: 0; background: transparent; color: var(--muted); font-size: 11px; }
+.dialog-close:hover { color: var(--accent-dark); }
 @keyframes auth-arrive { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
 
 .intro { display: flex; align-items: flex-end; justify-content: space-between; max-width: 1440px; margin: auto; padding: 42px 40px 28px; }
@@ -159,11 +174,12 @@ footer b { color: var(--ink); font-weight: 600; }
 }
 
 @media (max-width: 700px) {
-	.topbar { height: 58px; gap: 16px; padding-inline: 18px; }
+	.topbar { height: 58px; gap: 10px; padding-inline: 16px; }
 	.topbar nav { display: none; }
-	.status { font-size: 9px; }
-	.account-email { max-width: 130px; }
-	.sign-out { padding: 5px 7px; font-size: 9px; }
+	.status { gap: 5px; font-size: 9px; }
+	.user-name { max-width: 80px; }
+	.subscription-pill { display: none; }
+	.manage-subscription, .sign-out { padding: 5px 6px; font-size: 9px; }
 	.avatar { width: 27px; height: 27px; }
 	.intro { display: block; padding: 30px 20px 22px; }
 	.intro h1 { font-size: 34px; }
@@ -181,6 +197,15 @@ footer b { color: var(--ink); font-weight: 600; }
 	.chart-legend { padding-inline: 14px; }
 	footer { flex-direction: column; gap: 7px; padding: 14px 20px; }
 	.auth-dialog { padding: 28px 22px; }
+}
+
+@media (max-width: 380px) {
+	.topbar { gap: 7px; padding-inline: 12px; }
+	.brand { gap: 6px; font-size: 15px; }
+	.brand-mark { width: 27px; height: 27px; }
+	.status { gap: 4px; }
+	.user-name { max-width: 55px; font-size: 8px; }
+	.manage-subscription, .sign-out { padding-inline: 5px; font-size: 8px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

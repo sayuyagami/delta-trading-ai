@@ -60,3 +60,15 @@ Set these environment variables locally in `.env` and in the production server's
 - `AUTH_SESSION_SECRET`: a private random value of at least 32 bytes used to sign session cookies. Generate one with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`.
 
 The server verifies each Google credential and stores the signed session in an HTTP-only cookie. The chart-analysis endpoint requires that session. Keep `AUTH_SESSION_SECRET` private and use the same value for all server instances.
+
+## One-month access
+
+Chart analysis costs ₹99 for one calendar month of access. PhonePe Standard Checkout creates a one-time payment order; there is no recurring mandate or automatic renewal. The server checks PhonePe's order status and records the paid-through date against the signed-in Google account. After expiry, chart analysis is blocked and the dialog shows that the previous month is completed. Users must make a new payment to regain access.
+
+Get PhonePe Payment Gateway sandbox credentials from the PhonePe Business Dashboard's Developer Settings. Set `PHONEPE_CLIENT_ID`, `PHONEPE_CLIENT_SECRET`, `PHONEPE_CLIENT_VERSION`, and `PHONEPE_ENV=SANDBOX` in `.env` and in the production server environment. Set `PUBLIC_APP_URL` to the exact origin where the website is hosted; production checkout requires HTTPS.
+
+For order events, configure a PhonePe webhook using SHA username/password authentication. Register `https://your-domain.example/api/subscription/webhook` with the `checkout.order.completed` and `checkout.order.failed` events, then set its webhook username and password as `PHONEPE_WEBHOOK_USERNAME` and `PHONEPE_WEBHOOK_PASSWORD`. The local HTTP app cannot receive public webhooks; use a public HTTPS test URL for sandbox callback testing.
+
+Create a Supabase project, then run [`supabase/schema.sql`](supabase/schema.sql) in its SQL Editor. This script also adds the one-time payment and expiry columns if the earlier recurring-subscription schema was already installed. Set `SUPABASE_URL` and the project's server-only `SUPABASE_SERVICE_ROLE_KEY` in `.env` and in the production server environment. Never expose the service role key in browser code.
+
+If any recurring Razorpay subscriptions were created with an earlier version, cancel them in Razorpay Dashboard; this app no longer creates or manages Razorpay payments. For live PhonePe payments, set `PHONEPE_ENV=PRODUCTION` and use production credentials only after completing PhonePe's account verification and testing checkout end to end.

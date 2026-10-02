@@ -1,6 +1,7 @@
 import { createServer } from 'node:http'
 import { GoogleGenAI, Type } from '@google/genai'
 import { authIsConfigured, clearSessionCookie, createSessionCookie, readSession, verifyGoogleCredential } from './api/_auth.mjs'
+import { BillingError, billingIsConfigured, handleBillingAction, handlePhonePeWebhook } from './api/_billing.mjs'
 
 const port = Number(process.env.API_PORT || 3001)
 const maxImageBytes = 10 * 1024 * 1024
@@ -119,12 +120,80 @@ const server = createServer(async (request, response) => {
     }
     return
   }
+  if (pathname === '/api/subscription/webhook') {
+    if (request.method !== 'POST') {
+      sendJson(response, 405, { error: 'Method not allowed.' })
+      return
+    }
+    try {
+      const chunks = []
+      let size = 0
+      for await (const chunk of request) {
+        size += chunk.length
+        if (size > 1024 * 1024) throw new BillingError(413, 'Webhook payload is too large.')
+        chunks.push(chunk)
+      }
+      const rawBody = Buffer.concat(chunks).toString('utf8')
+      sendJson(response, 200, await handlePhonePeWebhook(rawBody, request.headers.authorization))
+    } catch (error) {
+      const status = error instanceof BillingError ? error.status : 502
+      sendJson(response, status, {
+        error: error instanceof BillingError ? error.message : 'PhonePe callback could not be processed.',
+      })
+    }
+    return
+  }
+  const billingActions = {
+    '/api/subscription/status': { action: 'status', method: 'GET' },
+    '/api/subscription/create': { action: 'create', method: 'POST' },
+    '/api/subscription/verify': { action: 'verify', method: 'POST' },
+  }
+  const billingRoute = billingActions[pathname]
+  if (billingRoute) {
+    if (request.method !== billingRoute.method) {
+      sendJson(response, 405, { error: 'Method not allowed.' })
+      return
+    }
+    const user = readSession(request)
+    if (!user) {
+      sendJson(response, 401, { error: 'Sign in with Google to manage your subscription.' })
+      return
+    }
+    try {
+      const body = request.method === 'POST' ? await readJson(request) : {}
+      sendJson(response, 200, await handleBillingAction(billingRoute.action, user, body))
+    } catch (error) {
+      const status = error instanceof BillingError ? error.status : 502
+      sendJson(response, status, {
+        error: error instanceof BillingError ? error.message : 'Subscription service could not complete the request.',
+      })
+    }
+    return
+  }
   if (pathname !== '/api/analyze' || request.method !== 'POST') {
     sendJson(response, 404, { error: 'Not found.' })
     return
   }
-  if (!readSession(request)) {
+  const session = readSession(request)
+  if (!session) {
     sendJson(response, 401, { error: 'Sign in with Google to analyze charts.' })
+    return
+  }
+  if (!billingIsConfigured()) {
+    sendJson(response, 503, { error: 'Subscription billing is not configured on the server.' })
+    return
+  }
+  try {
+    const subscription = await handleBillingAction('status', session)
+    if (!subscription.active) {
+      sendJson(response, 402, { error: 'A paid one-month access pass is required to analyze charts.' })
+      return
+    }
+  } catch (error) {
+    const status = error instanceof BillingError ? error.status : 503
+    sendJson(response, status, {
+      error: error instanceof BillingError ? error.message : 'Could not verify subscription status.',
+    })
     return
   }
   if (!ai) {
