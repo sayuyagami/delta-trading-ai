@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from '@google/genai'
 import { readSession } from './_auth.mjs'
-import { BillingError, billingIsConfigured, handleBillingAction } from './_billing.mjs'
+import { BillingError, billingIsConfigured, handleBillingAction } from './_manual-payment.mjs'
 
 const maxImageBytes = 10 * 1024 * 1024
 const primaryModel = process.env.GEMINI_MODEL || 'models/gemini-3.8-flash'

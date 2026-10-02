@@ -20,21 +20,34 @@
         <h1 id="subscription-title">Subscription active</h1>
         <p class="auth-copy">Your one-time payment gives you access until {{ formatSubscriptionDate(subscription.currentEnd!) }}. You will not be charged again automatically.</p>
         <button class="dialog-close" (click)="closeSubscriptionDialog()">Done</button>
+      } @else if (subscription?.status === 'pending_review') {
+        <p class="eyebrow">PAYMENT REVIEW</p>
+        <h1 id="subscription-title">Payment submitted</h1>
+        <p class="auth-copy">Your UPI reference has been submitted. Chart access unlocks after we confirm the payment.</p>
+        @if (subscription.paymentRequest?.reference) { <p class="billing-detail">Reference: <strong>{{ subscription.paymentRequest.reference }}</strong></p> }
+        <button class="primary-button subscription-action" (click)="refreshSubscription()" [disabled]="subscriptionLoading">{{ subscriptionLoading ? 'Checking approval…' : 'Check approval status' }}</button>
+        @if (billingError) { <p class="auth-error" role="alert">{{ billingError }}</p> }
+        <p class="auth-privacy">Do not submit another payment while this one is under review.</p>
       } @else {
         <p class="eyebrow">CHART ANALYSIS PLAN</p>
-        <h1 id="subscription-title">{{ subscription?.status === 'completed' ? 'Previous month completed' : subscription?.status === 'pending' ? 'Payment pending' : 'Unlock your analysis' }}</h1>
-        <p class="auth-copy">{{ subscription?.status === 'completed' ? 'Your previous month of access has ended.' : subscription?.status === 'pending' ? 'PhonePe is still processing your payment.' : 'Get one month of chart analysis access. Pay once. No auto-renewal.' }}</p>
-        <p class="subscription-price"><strong>₹99</strong><span>one month</span></p>
+        <h1 id="subscription-title">{{ subscription?.status === 'completed' ? 'Previous month completed' : manualPayment ? 'Pay by UPI' : 'Unlock your analysis' }}</h1>
+        <p class="auth-copy">{{ subscription?.status === 'completed' ? 'Your previous month of access has ended.' : manualPayment ? 'Send the exact amount using UPI, then submit the transaction reference for manual review.' : 'Get one month of chart analysis access. Pay once. No auto-renewal.' }}</p>
+        <p class="subscription-price"><strong>₹{{ manualPayment?.amount || 99 }}</strong><span>one month</span></p>
         @if (subscriptionLoading) {
           <output class="auth-progress" aria-live="polite"><span class="loading-dot"></span>Checking subscription…</output>
-        } @else if (subscription?.status === 'pending') {
-          <button class="primary-button subscription-action" (click)="refreshSubscription()" [disabled]="billingBusy">{{ billingBusy ? 'Checking PhonePe…' : 'Check payment status' }}</button>
+        } @else if (manualPayment) {
+          <div class="manual-payment-details">
+            <span>Pay to</span><strong>{{ manualPayment.payeeName }}</strong>
+            <span>UPI ID</span><strong class="manual-upi-id">{{ manualPayment.upiId }}</strong>
+          </div>
+          <a class="primary-button subscription-action upi-pay-link" [href]="upiPaymentLink"><span aria-hidden="true">₹</span>Open UPI app<span class="arrow" aria-hidden="true">→</span></a>
+          <label class="field-label payment-reference-field">UPI transaction reference<input [value]="transactionReference" (input)="onReferenceChange($event)" maxlength="40" autocomplete="off" placeholder="Enter UTR or transaction ID" /></label>
+          <button class="primary-button subscription-action" (click)="submitManualPaymentReference()" [disabled]="billingBusy || !transactionReference.trim()">{{ billingBusy ? 'Submitting for review…' : 'I have paid · Submit reference' }}</button>
         } @else {
-          <button class="primary-button subscription-action" (click)="startSubscription()" [disabled]="billingBusy"><span aria-hidden="true">₹</span>{{ billingBusy ? 'Opening secure checkout…' : 'Pay ₹99 for one month' }}<span class="arrow" aria-hidden="true">→</span></button>
-          <button class="secondary-button" (click)="refreshSubscription()" [disabled]="billingBusy">Already subscribed? Check status</button>
+          <button class="primary-button subscription-action" (click)="startSubscription()" [disabled]="billingBusy"><span aria-hidden="true">₹</span>{{ billingBusy ? 'Loading payment details…' : 'Show UPI payment details' }}<span class="arrow" aria-hidden="true">→</span></button>
         }
         @if (billingError) { <p class="auth-error" role="alert">{{ billingError }}</p> }
-        <p class="auth-privacy">Secure one-time payment via PhonePe. No automatic renewal.</p>
+        <p class="auth-privacy">One-time payment. No automatic renewal. Access starts after manual payment approval.</p>
         @if (subscription?.status !== 'completed') { <button class="dialog-close" (click)="closeSubscriptionDialog()">Not now</button> }
       }
     </dialog>

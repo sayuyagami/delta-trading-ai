@@ -1,4 +1,4 @@
-import { BillingError, handleBillingAction } from './_billing.mjs'
+import { BillingError, handleBillingAction } from './_manual-payment.mjs'
 import { readSession } from './_auth.mjs'
 
 export function createBillingHandler(action, method) {

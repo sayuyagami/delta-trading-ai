@@ -33,6 +33,15 @@ interface SubscriptionStatus {
   active: boolean
   status: string
   currentEnd: string | null
+  paymentRequest?: ManualPaymentRequest | null
+}
+
+interface ManualPaymentRequest {
+  requestId: string
+  reference: string | null
+  upiId: string
+  payeeName: string
+  amount: number
 }
 
 type ChartTimeframe = '1H'
@@ -51,6 +60,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   authLoading = true
   authError = ''
   subscription: SubscriptionStatus | null = null
+  manualPayment: ManualPaymentRequest | null = null
+  transactionReference = ''
   subscriptionLoading = true
   billingBusy = false
   billingError = ''
@@ -162,6 +173,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.clearSubscriptionExpiryTimer()
     this.authUser = null
     this.subscription = null
+    this.manualPayment = null
+    this.transactionReference = ''
     this.subscriptionDialogOpen = false
     this.analysis = null
     this.authError = ''
@@ -194,17 +207,62 @@ export class AppComponent implements AfterViewInit, OnDestroy {
         headers: { 'Content-Type': 'application/json' },
         body: '{}',
       })
-      const result = await response.json() as { merchantOrderId?: string; redirectUrl?: string; error?: string }
-      if (!response.ok || !result.merchantOrderId || !result.redirectUrl) {
-        throw new Error(result.error || 'Could not start the subscription checkout.')
+      const result = await response.json() as SubscriptionStatus & { error?: string }
+      if (!response.ok || !result.paymentRequest) {
+        throw new Error(result.error || 'Could not load manual payment details.')
       }
-      sessionStorage.setItem('phonepeMerchantOrderId', result.merchantOrderId)
-      window.location.assign(result.redirectUrl)
+      this.subscription = result
+      this.manualPayment = result.paymentRequest
+      this.transactionReference = result.paymentRequest.reference || ''
     } catch (error) {
-      this.billingError = error instanceof Error ? error.message : 'Could not open subscription checkout.'
+      this.billingError = error instanceof Error ? error.message : 'Could not load manual payment details.'
+      this.billingBusy = false
+    } finally {
       this.billingBusy = false
       this.changeDetector.markForCheck()
     }
+  }
+
+  onReferenceChange(event: Event): void {
+    this.transactionReference = (event.target as HTMLInputElement).value
+  }
+
+  async submitManualPaymentReference(): Promise<void> {
+    if (!this.manualPayment || this.billingBusy) return
+    this.billingBusy = true
+    this.billingError = ''
+    try {
+      const response = await fetch('/api/subscription/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId: this.manualPayment.requestId,
+          reference: this.transactionReference,
+        }),
+      })
+      const result = await response.json() as SubscriptionStatus & { error?: string }
+      if (!response.ok) throw new Error(result.error || 'Could not submit the payment reference.')
+      this.subscription = result
+      this.manualPayment = result.paymentRequest || this.manualPayment
+      this.transactionReference = this.manualPayment.reference || this.transactionReference.trim()
+    } catch (error) {
+      this.billingError = error instanceof Error ? error.message : 'Could not submit the payment reference.'
+    } finally {
+      this.billingBusy = false
+      this.changeDetector.markForCheck()
+    }
+  }
+
+  get upiPaymentLink(): string {
+    if (!this.manualPayment) return ''
+    const parameters = new URLSearchParams({
+      pa: this.manualPayment.upiId,
+      pn: this.manualPayment.payeeName,
+      am: this.manualPayment.amount.toFixed(2),
+      cu: 'INR',
+      tn: 'TradeGuru one month access',
+    })
+    return `upi://pay?${parameters.toString()}`
   }
 
   async refreshSubscription(): Promise<void> {
@@ -216,6 +274,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       const result = await response.json() as SubscriptionStatus & { error?: string }
       if (!response.ok) throw new Error(result.error || 'Could not check your subscription.')
       this.subscription = result
+      this.manualPayment = result.paymentRequest || null
+      this.transactionReference = result.paymentRequest?.reference || ''
+      if (result.active) this.subscriptionDialogOpen = false
       if (result.status === 'completed') this.subscriptionDialogOpen = true
       this.scheduleSubscriptionExpiry()
     } catch (error) {
@@ -241,7 +302,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
       if (this.authUser) {
         await this.refreshSubscription()
-        await this.completePhonePeReturn()
       } else {
         this.subscriptionLoading = false
         if (!config.clientId) throw new Error('Google sign-in is not configured. Add GOOGLE_CLIENT_ID to the server environment.')
@@ -280,7 +340,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       if (!response.ok || !result.user) throw new Error(result.error || 'Google sign-in could not be completed.')
       this.authUser = result.user
       await this.refreshSubscription()
-      await this.completePhonePeReturn()
     } catch (error) {
       this.authError = error instanceof Error ? error.message : 'Google sign-in could not be completed.'
     } finally {
@@ -300,54 +359,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       script.onerror = () => reject(new Error('Could not load Google sign-in. Check your connection and reload.'))
       document.head.append(script)
     })
-  }
-
-  private async completePhonePeReturn(): Promise<void> {
-    const url = new URL(window.location.href)
-    const merchantOrderId = url.searchParams.get('phonepe_order_id')
-      || sessionStorage.getItem('phonepeMerchantOrderId')
-    if (!merchantOrderId) return
-
-    url.searchParams.delete('phonepe_order_id')
-    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
-    this.subscriptionDialogOpen = true
-    this.billingBusy = true
-    this.billingError = ''
-    try {
-      await this.verifyPayment(merchantOrderId)
-      if (this.subscription?.active) sessionStorage.removeItem('phonepeMerchantOrderId')
-    } catch (error) {
-      this.billingError = error instanceof Error ? error.message : 'Could not verify PhonePe payment.'
-    } finally {
-      this.billingBusy = false
-      this.changeDetector.markForCheck()
-    }
-  }
-
-  private async verifyPayment(merchantOrderId: string): Promise<void> {
-    this.billingError = ''
-    try {
-      const response = await fetch('/api/subscription/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ merchantOrderId }),
-      })
-      const result = await response.json() as SubscriptionStatus & { error?: string }
-      if (!response.ok) throw new Error(result.error || 'Could not verify PhonePe payment.')
-      this.subscription = result
-      if (result.active) {
-        this.subscriptionDialogOpen = false
-        this.scheduleSubscriptionExpiry()
-      }
-      else this.billingError = result.status === 'pending'
-        ? 'PhonePe is still processing the payment. Check the status again shortly.'
-        : 'PhonePe has not confirmed this payment. Please try again.'
-    } catch (error) {
-      throw error instanceof Error ? error : new Error('Could not verify PhonePe payment.')
-    } finally {
-      this.billingBusy = false
-      this.changeDetector.markForCheck()
-    }
   }
 
   onPreviewLoad(event: Event): void {

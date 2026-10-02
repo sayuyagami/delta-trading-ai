@@ -1,7 +1,7 @@
 import { createServer } from 'node:http'
 import { GoogleGenAI, Type } from '@google/genai'
 import { authIsConfigured, clearSessionCookie, createSessionCookie, readSession, verifyGoogleCredential } from './api/_auth.mjs'
-import { BillingError, billingIsConfigured, handleBillingAction, handlePhonePeWebhook } from './api/_billing.mjs'
+import { BillingError, billingIsConfigured, handleBillingAction } from './api/_manual-payment.mjs'
 
 const port = Number(process.env.API_PORT || 3001)
 const maxImageBytes = 10 * 1024 * 1024
@@ -120,33 +120,10 @@ const server = createServer(async (request, response) => {
     }
     return
   }
-  if (pathname === '/api/subscription/webhook') {
-    if (request.method !== 'POST') {
-      sendJson(response, 405, { error: 'Method not allowed.' })
-      return
-    }
-    try {
-      const chunks = []
-      let size = 0
-      for await (const chunk of request) {
-        size += chunk.length
-        if (size > 1024 * 1024) throw new BillingError(413, 'Webhook payload is too large.')
-        chunks.push(chunk)
-      }
-      const rawBody = Buffer.concat(chunks).toString('utf8')
-      sendJson(response, 200, await handlePhonePeWebhook(rawBody, request.headers.authorization))
-    } catch (error) {
-      const status = error instanceof BillingError ? error.status : 502
-      sendJson(response, status, {
-        error: error instanceof BillingError ? error.message : 'PhonePe callback could not be processed.',
-      })
-    }
-    return
-  }
   const billingActions = {
     '/api/subscription/status': { action: 'status', method: 'GET' },
     '/api/subscription/create': { action: 'create', method: 'POST' },
-    '/api/subscription/verify': { action: 'verify', method: 'POST' },
+    '/api/subscription/submit': { action: 'submit', method: 'POST' },
   }
   const billingRoute = billingActions[pathname]
   if (billingRoute) {

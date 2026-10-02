@@ -58,6 +58,11 @@ button, select { cursor: pointer; }
 .subscription-price strong { font: 500 36px/1 Georgia, serif; }
 .subscription-price span { color: var(--muted); font-size: 12px; }
 .subscription-action { margin: 0 0 9px; }
+.manual-payment-details { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 8px 12px; margin: 16px 0; padding: 13px 0; border-block: 1px solid var(--line); font-size: 11px; }
+.manual-payment-details span { color: var(--muted); }
+.manual-payment-details strong { min-width: 0; overflow-wrap: anywhere; color: var(--ink); }
+.upi-pay-link { text-decoration: none; }
+.payment-reference-field input { display: block; width: 100%; min-height: 40px; margin-top: 7px; padding: 9px 10px; border: 1px solid #e2ddeb; border-radius: 6px; background: white; color: var(--ink); font-size: 12px; }
 .secondary-button { width: 100%; min-height: 40px; margin-top: 9px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--ink); font-size: 12px; font-weight: 600; }
 .secondary-button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-dark); }
 .secondary-button:disabled { cursor: wait; opacity: .6; }

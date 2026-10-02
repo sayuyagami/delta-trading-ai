@@ -63,12 +63,43 @@ The server verifies each Google credential and stores the signed session in an H
 
 ## One-month access
 
-Chart analysis costs ₹99 for one calendar month of access. PhonePe Standard Checkout creates a one-time payment order; there is no recurring mandate or automatic renewal. The server checks PhonePe's order status and records the paid-through date against the signed-in Google account. After expiry, chart analysis is blocked and the dialog shows that the previous month is completed. Users must make a new payment to regain access.
+Chart analysis costs ₹99 for one calendar month of access. Customers pay manually by UPI and submit the transaction reference. The site stays locked while payment is pending review; access starts only after you confirm the payment and approve the row in Supabase. There is no automatic renewal.
 
-Get PhonePe Payment Gateway sandbox credentials from the PhonePe Business Dashboard's Developer Settings. Set `PHONEPE_CLIENT_ID`, `PHONEPE_CLIENT_SECRET`, `PHONEPE_CLIENT_VERSION`, and `PHONEPE_ENV=SANDBOX` in `.env` and in the production server environment. Set `PUBLIC_APP_URL` to the exact origin where the website is hosted; production checkout requires HTTPS.
+Set `MANUAL_PAYMENT_UPI_ID` and `MANUAL_PAYMENT_PAYEE_NAME` in `.env` and in the production server environment. Use a UPI account that your bank/payment provider permits for receiving business payments. Create a Supabase project, then run [`supabase/schema.sql`](supabase/schema.sql) in its SQL Editor. Set `SUPABASE_URL` and the server-only `SUPABASE_SERVICE_ROLE_KEY`; never expose the service-role key in browser code.
 
-For order events, configure a PhonePe webhook using SHA username/password authentication. Register `https://your-domain.example/api/subscription/webhook` with the `checkout.order.completed` and `checkout.order.failed` events, then set its webhook username and password as `PHONEPE_WEBHOOK_USERNAME` and `PHONEPE_WEBHOOK_PASSWORD`. The local HTTP app cannot receive public webhooks; use a public HTTPS test URL for sandbox callback testing.
+To review submitted payments, run this in Supabase SQL Editor and verify each reference against your bank/UPI transaction history:
 
-Create a Supabase project, then run [`supabase/schema.sql`](supabase/schema.sql) in its SQL Editor. This script also adds the one-time payment and expiry columns if the earlier recurring-subscription schema was already installed. Set `SUPABASE_URL` and the project's server-only `SUPABASE_SERVICE_ROLE_KEY` in `.env` and in the production server environment. Never expose the service role key in browser code.
+```sql
+select google_sub, email, manual_payment_reference, manual_payment_submitted_at
+from public.user_subscriptions
+where status = 'pending_review';
+```
 
-If any recurring Razorpay subscriptions were created with an earlier version, cancel them in Razorpay Dashboard; this app no longer creates or manages Razorpay payments. For live PhonePe payments, set `PHONEPE_ENV=PRODUCTION` and use production credentials only after completing PhonePe's account verification and testing checkout end to end.
+After confirming a ₹99 payment, approve that exact account and reference:
+
+```sql
+update public.user_subscriptions
+set manual_payment_status = 'approved',
+    status = 'active',
+    manual_payment_reviewed_at = now(),
+    access_expires_at = now() + interval '1 month',
+    updated_at = now()
+where google_sub = 'GOOGLE_SUB_FROM_REVIEW_QUERY'
+  and manual_payment_reference = 'CONFIRMED_UPI_REFERENCE'
+  and status = 'pending_review';
+```
+
+Access starts when you approve the payment and ends one calendar month later. Never approve based solely on the reference entered by a user; verify the payment arrived first.
+
+If the payment cannot be found, reject that reference so the user can submit a new request:
+
+```sql
+update public.user_subscriptions
+set manual_payment_status = 'rejected',
+    status = 'rejected',
+    manual_payment_reviewed_at = now(),
+    updated_at = now()
+where google_sub = 'GOOGLE_SUB_FROM_REVIEW_QUERY'
+  and manual_payment_reference = 'UNCONFIRMED_UPI_REFERENCE'
+  and status = 'pending_review';
+```
