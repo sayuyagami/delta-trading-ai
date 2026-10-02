@@ -49,3 +49,14 @@ export default defineConfig([
     "confidence": 65,
     "rationale": "The 1D chart shows a strong recovery bounce off local lows near 0.1400 with recent bullish momentum testing 0.1800 levels. The 1H chart indicates a sharp rejection and V-shaped rebound from lows near 0.1620, currently forming green continuation candles trading around 0.1805. Entry is set at current price 0.1805, stop loss below the recent swing low support at 0.1650, and target near the local resistance/supply level at 0.1950."
 }*/
+
+## Google sign-in
+
+Create a Google OAuth **Web application** client ID in Google Cloud Console. Add `http://localhost:4200` and your production site origin to its authorized JavaScript origins. No redirect URI is needed; Google Identity Services opens its account chooser from the sign-in button in the launch dialog.
+
+Set these environment variables locally in `.env` and in the production server's environment:
+
+- `GOOGLE_CLIENT_ID`: the OAuth client ID (public; also used to validate Google ID tokens).
+- `AUTH_SESSION_SECRET`: a private random value of at least 32 bytes used to sign session cookies. Generate one with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`.
+
+The server verifies each Google credential and stores the signed session in an HTTP-only cookie. The chart-analysis endpoint requires that session. Keep `AUTH_SESSION_SECRET` private and use the same value for all server instances.

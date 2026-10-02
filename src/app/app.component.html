@@ -1,8 +1,23 @@
-<main class="app-shell">
+<div class="auth-gate" [class.auth-gate-hidden]="authUser" [attr.aria-hidden]="authUser ? 'true' : 'false'">
+  <dialog open class="auth-dialog" aria-labelledby="auth-title">
+    <div class="brand auth-brand"><span class="brand-mark">T</span><span>Trade<span class="brand-accent">Guru</span></span></div>
+    <p class="eyebrow">YOUR CHART WORKSPACE</p>
+    <h1 id="auth-title">Sign in or create an account</h1>
+    <p class="auth-copy">Continue with your Google account to access chart analysis.</p>
+    @if (authLoading) {
+      <output class="auth-progress" aria-live="polite"><span class="loading-dot"></span>Connecting to Google…</output>
+    }
+    <div #googleButton class="google-button" [class.google-button-pending]="authLoading || authError"></div>
+    @if (authError) { <p class="auth-error" role="alert">{{ authError }}</p> }
+    <p class="auth-privacy">Your Google password is never shared with TradeGuru.</p>
+  </dialog>
+</div>
+
+<main class="app-shell" [attr.inert]="authUser ? null : ''">
   <header class="topbar">
     <div class="brand"><span class="brand-mark">T</span><span>Trade<span class="brand-accent">Guru</span></span></div>
     <nav><a class="active" href="#workspace">Workspace</a></nav>
-    <div class="status"><span class="status-dot"></span> Paper mode <span class="avatar">AK</span></div>
+    @if (authUser) { <div class="status"><span class="status-dot"></span> Paper mode <span class="account-email">{{ authUser.email }}</span><button class="sign-out" (click)="signOut()" aria-label="Sign out">Sign out</button></div> }
   </header>
 
   <section class="intro" id="workspace">

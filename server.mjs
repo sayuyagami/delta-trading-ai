@@ -1,5 +1,6 @@
 import { createServer } from 'node:http'
 import { GoogleGenAI, Type } from '@google/genai'
+import { authIsConfigured, clearSessionCookie, createSessionCookie, readSession, verifyGoogleCredential } from './api/_auth.mjs'
 
 const port = Number(process.env.API_PORT || 3001)
 const maxImageBytes = 10 * 1024 * 1024
@@ -88,8 +89,42 @@ async function generateAnalysis(request) {
 }
 
 const server = createServer(async (request, response) => {
-  if (request.method !== 'POST' || request.url !== '/api/analyze') {
+  const pathname = new URL(request.url, 'http://localhost').pathname
+  if (pathname === '/api/auth/config' && request.method === 'GET') {
+    sendJson(response, 200, { clientId: process.env.GOOGLE_CLIENT_ID || '' })
+    return
+  }
+  if (pathname === '/api/auth/session' && request.method === 'GET') {
+    const session = readSession(request)
+    sendJson(response, 200, { user: session ? { email: session.email, name: session.name } : null })
+    return
+  }
+  if (pathname === '/api/auth/session' && request.method === 'DELETE') {
+    response.setHeader('Set-Cookie', clearSessionCookie())
+    sendJson(response, 200, { user: null })
+    return
+  }
+  if (pathname === '/api/auth/google' && request.method === 'POST') {
+    if (!authIsConfigured()) {
+      sendJson(response, 503, { error: 'Google sign-in is not configured on the server.' })
+      return
+    }
+    try {
+      const body = await readJson(request)
+      const user = await verifyGoogleCredential(body.credential)
+      response.setHeader('Set-Cookie', createSessionCookie(user))
+      sendJson(response, 200, { user: { email: user.email, name: user.name } })
+    } catch {
+      sendJson(response, 401, { error: 'Google sign-in could not be verified. Please try again.' })
+    }
+    return
+  }
+  if (pathname !== '/api/analyze' || request.method !== 'POST') {
     sendJson(response, 404, { error: 'Not found.' })
+    return
+  }
+  if (!readSession(request)) {
+    sendJson(response, 401, { error: 'Sign in with Google to analyze charts.' })
     return
   }
   if (!ai) {

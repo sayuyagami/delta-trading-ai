@@ -33,6 +33,24 @@ button, select { cursor: pointer; }
 .status { display: flex; align-items: center; gap: 8px; margin-left: auto; color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; }
 .status-dot, .live-pill span { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #7655d9; }
 .avatar { display: grid; place-items: center; width: 30px; height: 30px; margin-left: 8px; border: 1px solid var(--line); border-radius: 50%; background: #f7f5fc; color: #615080; font-size: 10px; }
+.account-email { max-width: 220px; overflow: hidden; text-overflow: ellipsis; text-transform: none; white-space: nowrap; }
+.sign-out { padding: 6px 9px; border: 1px solid var(--line); border-radius: 5px; background: white; color: var(--muted); font-size: 10px; }
+.sign-out:hover { border-color: var(--accent); color: var(--accent-dark); }
+
+.auth-gate { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(33, 30, 43, .58); backdrop-filter: blur(5px); }
+.auth-gate-hidden { display: none; }
+.auth-dialog { position: relative; width: min(100%, 420px); margin: 0; padding: 34px; border: 1px solid #e6e1ec; border-radius: 10px; background: white; color: var(--ink); box-shadow: 0 24px 80px rgba(20, 18, 30, .24); animation: auth-arrive .25s ease-out both; }
+.auth-brand { margin-bottom: 30px; }
+.auth-dialog .eyebrow { margin-bottom: 9px; }
+.auth-dialog h1 { margin: 0; color: var(--ink); font: 500 27px/1.2 Georgia, serif; }
+.auth-copy { margin: 10px 0 24px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.google-button { display: flex; min-height: 42px; justify-content: center; }
+.google-button-pending { visibility: hidden; }
+.auth-progress { display: flex; min-height: 42px; align-items: center; justify-content: center; gap: 9px; color: var(--muted); font-size: 12px; }
+.auth-progress .loading-dot { background: var(--accent); }
+.auth-error { margin: 12px 0 0; color: var(--red); font-size: 12px; line-height: 1.5; text-align: center; }
+.auth-privacy { margin: 24px 0 0; color: var(--muted); font-size: 10px; text-align: center; }
+@keyframes auth-arrive { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
 
 .intro { display: flex; align-items: flex-end; justify-content: space-between; max-width: 1440px; margin: auto; padding: 42px 40px 28px; }
 .eyebrow { margin: 0 0 10px; color: var(--accent); font: 700 10px 'Aptos', 'Segoe UI', sans-serif; letter-spacing: .1em; }
@@ -144,6 +162,8 @@ footer b { color: var(--ink); font-weight: 600; }
 	.topbar { height: 58px; gap: 16px; padding-inline: 18px; }
 	.topbar nav { display: none; }
 	.status { font-size: 9px; }
+	.account-email { max-width: 130px; }
+	.sign-out { padding: 5px 7px; font-size: 9px; }
 	.avatar { width: 27px; height: 27px; }
 	.intro { display: block; padding: 30px 20px 22px; }
 	.intro h1 { font-size: 34px; }
@@ -160,6 +180,7 @@ footer b { color: var(--ink); font-weight: 600; }
 	.chart-wrap { height: 280px; margin: 12px; }
 	.chart-legend { padding-inline: 14px; }
 	footer { flex-direction: column; gap: 7px; padding: 14px 20px; }
+	.auth-dialog { padding: 28px 22px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

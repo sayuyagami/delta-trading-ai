@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type } from '@google/genai'
+import { readSession } from './_auth.mjs'
 
 const maxImageBytes = 10 * 1024 * 1024
 const primaryModel = process.env.GEMINI_MODEL || 'models/gemini-3.8-flash'
@@ -74,6 +75,10 @@ async function generateAnalysis(ai, request) {
 export default async function handler(request, response) {
   if (request.method !== 'POST') {
     response.status(405).json({ error: 'Method not allowed.' })
+    return
+  }
+  if (!readSession(request)) {
+    response.status(401).json({ error: 'Sign in with Google to analyze charts.' })
     return
   }
   if (!process.env.GEMINI_API_KEY) {
