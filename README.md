@@ -65,7 +65,7 @@ The server verifies each Google credential and stores the signed session in an H
 
 Chart analysis costs ₹99 for one calendar month of access. Customers pay manually by UPI and submit the transaction reference. The site stays locked while payment is pending review; access starts only after you confirm the payment and approve the row in Supabase. There is no automatic renewal.
 
-Set `MANUAL_PAYMENT_UPI_ID` and `MANUAL_PAYMENT_PAYEE_NAME` in `.env` and in the production server environment. Use a UPI account that your bank/payment provider permits for receiving business payments. Create a Supabase project, then run [`supabase/schema.sql`](supabase/schema.sql) in its SQL Editor. Set `SUPABASE_URL` and the server-only `SUPABASE_SERVICE_ROLE_KEY`; never expose the service-role key in browser code.
+The payment dialog displays the QR image at `src/assets/payment-qr.jpg` and the configured payee name; it does not display a UPI ID. Replace that asset with the QR for the receiving account and set `MANUAL_PAYMENT_PAYEE_NAME` in `.env` and in the production environment. Use a UPI account your bank/payment provider permits for receiving these payments. Create a Supabase project, then run [`supabase/schema.sql`](supabase/schema.sql) in its SQL Editor. Set `SUPABASE_URL` and the server-only `SUPABASE_SERVICE_ROLE_KEY`; never expose the service-role key in browser code.
 
 To review submitted payments, run this in Supabase SQL Editor and verify each reference against your bank/UPI transaction history:
 

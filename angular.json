@@ -21,6 +21,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "payment-qr.jpg",
+                "input": "src/assets",
+                "output": "assets"
               }
             ],
             "styles": ["src/index.css"]

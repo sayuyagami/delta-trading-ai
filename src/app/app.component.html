@@ -38,9 +38,9 @@
         } @else if (manualPayment) {
           <div class="manual-payment-details">
             <span>Pay to</span><strong>{{ manualPayment.payeeName }}</strong>
-            <span>UPI ID</span><strong class="manual-upi-id">{{ manualPayment.upiId }}</strong>
           </div>
-          <a class="primary-button subscription-action upi-pay-link" [href]="upiPaymentLink"><span aria-hidden="true">₹</span>Open UPI app<span class="arrow" aria-hidden="true">→</span></a>
+          <img class="payment-qr" src="assets/payment-qr.jpg" width="220" height="220" alt="UPI payment QR for {{ manualPayment.payeeName }}" />
+          <p class="qr-instruction">Scan this QR code using your UPI app to pay ₹{{ manualPayment.amount }}.</p>
           <label class="field-label payment-reference-field">UPI transaction reference<input [value]="transactionReference" (input)="onReferenceChange($event)" maxlength="40" autocomplete="off" placeholder="Enter UTR or transaction ID" /></label>
           <button class="primary-button subscription-action" (click)="submitManualPaymentReference()" [disabled]="billingBusy || !transactionReference.trim()">{{ billingBusy ? 'Submitting for review…' : 'I have paid · Submit reference' }}</button>
         } @else {

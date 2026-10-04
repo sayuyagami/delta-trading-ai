@@ -11,8 +11,7 @@ export class BillingError extends Error {
 }
 
 export function billingIsConfigured() {
-  return Boolean(process.env.MANUAL_PAYMENT_UPI_ID
-    && process.env.SUPABASE_URL
+  return Boolean(process.env.SUPABASE_URL
     && process.env.SUPABASE_SERVICE_ROLE_KEY)
 }
 
@@ -109,7 +108,6 @@ function paymentRequestDetails(saved) {
   return {
     requestId: saved.manual_payment_request_id,
     reference: saved.manual_payment_reference || null,
-    upiId: process.env.MANUAL_PAYMENT_UPI_ID,
     payeeName: process.env.MANUAL_PAYMENT_PAYEE_NAME || 'TradeGuru',
     amount: monthlyPriceRupees,
   }

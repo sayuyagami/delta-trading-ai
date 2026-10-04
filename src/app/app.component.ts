@@ -39,7 +39,6 @@ interface SubscriptionStatus {
 interface ManualPaymentRequest {
   requestId: string
   reference: string | null
-  upiId: string
   payeeName: string
   amount: number
 }
@@ -251,18 +250,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       this.billingBusy = false
       this.changeDetector.markForCheck()
     }
-  }
-
-  get upiPaymentLink(): string {
-    if (!this.manualPayment) return ''
-    const parameters = new URLSearchParams({
-      pa: this.manualPayment.upiId,
-      pn: this.manualPayment.payeeName,
-      am: this.manualPayment.amount.toFixed(2),
-      cu: 'INR',
-      tn: 'TradeGuru one month access',
-    })
-    return `upi://pay?${parameters.toString()}`
   }
 
   async refreshSubscription(): Promise<void> {
