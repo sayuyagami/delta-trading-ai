@@ -11,7 +11,8 @@ export class BillingError extends Error {
 }
 
 export function billingIsConfigured() {
-  return Boolean(process.env.SUPABASE_URL
+  return Boolean(process.env.MANUAL_PAYMENT_UPI_ID
+    && process.env.SUPABASE_URL
     && process.env.SUPABASE_SERVICE_ROLE_KEY)
 }
 
@@ -110,7 +111,20 @@ function paymentRequestDetails(saved) {
     reference: saved.manual_payment_reference || null,
     payeeName: process.env.MANUAL_PAYMENT_PAYEE_NAME || 'TradeGuru',
     amount: monthlyPriceRupees,
+    upiUri: createUpiPaymentUri(saved.manual_payment_request_id),
   }
+}
+
+function createUpiPaymentUri(requestId) {
+  const parameters = new URLSearchParams({
+    pa: process.env.MANUAL_PAYMENT_UPI_ID,
+    pn: process.env.MANUAL_PAYMENT_PAYEE_NAME || 'TradeGuru',
+    am: monthlyPriceRupees.toFixed(2),
+    cu: 'INR',
+    tn: 'TradeGuru one month access',
+    tr: requestId.replaceAll('-', ''),
+  })
+  return `upi://pay?${parameters.toString()}`
 }
 
 function inactiveStatus() {

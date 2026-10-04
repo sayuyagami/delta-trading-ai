@@ -1,4 +1,5 @@
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core'
+import QRCode from 'qrcode'
 
 interface GoogleIdentityServices {
   accounts: {
@@ -41,6 +42,7 @@ interface ManualPaymentRequest {
   reference: string | null
   payeeName: string
   amount: number
+  upiUri: string
 }
 
 type ChartTimeframe = '1H'
@@ -60,6 +62,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   authError = ''
   subscription: SubscriptionStatus | null = null
   manualPayment: ManualPaymentRequest | null = null
+  paymentQrDataUrl = ''
   transactionReference = ''
   subscriptionLoading = true
   billingBusy = false
@@ -173,6 +176,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.authUser = null
     this.subscription = null
     this.manualPayment = null
+    this.paymentQrDataUrl = ''
     this.transactionReference = ''
     this.subscriptionDialogOpen = false
     this.analysis = null
@@ -211,8 +215,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
         throw new Error(result.error || 'Could not load manual payment details.')
       }
       this.subscription = result
-      this.manualPayment = result.paymentRequest
-      this.transactionReference = result.paymentRequest.reference || ''
+      await this.setManualPayment(result.paymentRequest)
     } catch (error) {
       this.billingError = error instanceof Error ? error.message : 'Could not load manual payment details.'
       this.billingBusy = false
@@ -224,6 +227,23 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   onReferenceChange(event: Event): void {
     this.transactionReference = (event.target as HTMLInputElement).value
+  }
+
+  private async setManualPayment(request: ManualPaymentRequest | null | undefined): Promise<void> {
+    this.manualPayment = request || null
+    this.transactionReference = request?.reference || ''
+    this.paymentQrDataUrl = ''
+    if (!request || request.reference) return
+
+    try {
+      this.paymentQrDataUrl = await QRCode.toDataURL(request.upiUri, {
+        errorCorrectionLevel: 'M',
+        margin: 2,
+        width: 280,
+      })
+    } catch {
+      this.billingError = 'Could not generate the payment QR. Please refresh and try again.'
+    }
   }
 
   async submitManualPaymentReference(): Promise<void> {
@@ -242,8 +262,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       const result = await response.json() as SubscriptionStatus & { error?: string }
       if (!response.ok) throw new Error(result.error || 'Could not submit the payment reference.')
       this.subscription = result
-      this.manualPayment = result.paymentRequest || this.manualPayment
-      this.transactionReference = this.manualPayment.reference || this.transactionReference.trim()
+      await this.setManualPayment(result.paymentRequest || this.manualPayment)
     } catch (error) {
       this.billingError = error instanceof Error ? error.message : 'Could not submit the payment reference.'
     } finally {
@@ -261,9 +280,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       const result = await response.json() as SubscriptionStatus & { error?: string }
       if (!response.ok) throw new Error(result.error || 'Could not check your subscription.')
       this.subscription = result
-      this.manualPayment = result.paymentRequest || null
-      this.transactionReference = result.paymentRequest?.reference || ''
-      if (result.active) this.subscriptionDialogOpen = false
+      await this.setManualPayment(result.paymentRequest)
       if (result.status === 'completed') this.subscriptionDialogOpen = true
       this.scheduleSubscriptionExpiry()
     } catch (error) {

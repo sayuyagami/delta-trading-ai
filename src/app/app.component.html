@@ -22,8 +22,8 @@
         <button class="dialog-close" (click)="closeSubscriptionDialog()">Done</button>
       } @else if (subscription?.status === 'pending_review') {
         <p class="eyebrow">PAYMENT REVIEW</p>
-        <h1 id="subscription-title">Payment submitted</h1>
-        <p class="auth-copy">Your UPI reference has been submitted. Chart access unlocks after we confirm the payment.</p>
+        <h1 id="subscription-title">Payment pending review</h1>
+        <p class="auth-copy">Your UPI reference is awaiting manual confirmation. Chart access stays locked until the payment is approved.</p>
         @if (subscription.paymentRequest?.reference) { <p class="billing-detail">Reference: <strong>{{ subscription.paymentRequest.reference }}</strong></p> }
         <button class="primary-button subscription-action" (click)="refreshSubscription()" [disabled]="subscriptionLoading">{{ subscriptionLoading ? 'Checking approval…' : 'Check approval status' }}</button>
         @if (billingError) { <p class="auth-error" role="alert">{{ billingError }}</p> }
@@ -39,8 +39,12 @@
           <div class="manual-payment-details">
             <span>Pay to</span><strong>{{ manualPayment.payeeName }}</strong>
           </div>
-          <img class="payment-qr" src="assets/payment-qr.jpg" width="220" height="220" alt="UPI payment QR for {{ manualPayment.payeeName }}" />
-          <p class="qr-instruction">Scan this QR code using your UPI app to pay ₹{{ manualPayment.amount }}.</p>
+          @if (paymentQrDataUrl) {
+            <img class="payment-qr" [src]="paymentQrDataUrl" width="220" height="220" alt="UPI payment QR for ₹{{ manualPayment.amount }} to {{ manualPayment.payeeName }}" />
+            <p class="qr-instruction">Scan to prefill ₹{{ manualPayment.amount }} to {{ manualPayment.payeeName }}. If your UPI app allows editing, confirm the amount is ₹{{ manualPayment.amount }} before paying.</p>
+          } @else if (!manualPayment.reference) {
+            <p class="auth-error" role="alert">Payment QR is unavailable. Refresh payment details and try again.</p>
+          }
           <label class="field-label payment-reference-field">UPI transaction reference<input [value]="transactionReference" (input)="onReferenceChange($event)" maxlength="40" autocomplete="off" placeholder="Enter UTR or transaction ID" /></label>
           <button class="primary-button subscription-action" (click)="submitManualPaymentReference()" [disabled]="billingBusy || !transactionReference.trim()">{{ billingBusy ? 'Submitting for review…' : 'I have paid · Submit reference' }}</button>
         } @else {
