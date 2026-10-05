@@ -1,4 +1,5 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core'
+import { DOCUMENT } from '@angular/common'
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, Inject, OnDestroy, OnInit, Renderer2, ViewChild } from '@angular/core'
 import QRCode from 'qrcode'
 
 interface GoogleIdentityServices {
@@ -61,14 +62,22 @@ type ChartTimeframe = '1H'
   standalone: true,
   templateUrl: './app.component.html',
 })
-export class AppComponent implements AfterViewInit, OnDestroy {
-  constructor(private readonly changeDetector: ChangeDetectorRef) {}
+export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
+  constructor(
+    private readonly changeDetector: ChangeDetectorRef,
+    private readonly renderer: Renderer2,
+    @Inject(DOCUMENT) private readonly document: Document,
+  ) {}
 
-  @ViewChild('googleButton') private readonly googleButton!: ElementRef<HTMLDivElement>
+  @ViewChild('googleButton') private googleButton?: ElementRef<HTMLDivElement>
 
   authUser: { email: string; name: string } | null = null
+  themeDark = false
   authLoading = true
+  loginDialogOpen = false
+  googleLoading = false
   authError = ''
+  private googleIdentityInitialized = false
   subscription: SubscriptionStatus | null = null
   manualPayment: ManualPaymentRequest | null = null
   paymentQrDataUrl = ''
@@ -96,8 +105,36 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   instrument = 'FARTCOINUSD perpetual'
   tradeBias = 'Both directions'
 
+  ngOnInit(): void {
+    try {
+      this.themeDark = this.document.defaultView?.localStorage.getItem('tradeguru-theme') === 'dark'
+    } catch {
+      this.themeDark = false
+    }
+    this.syncThemeClass()
+  }
+
   ngAfterViewInit(): void {
     void this.initializeAuth()
+  }
+
+  toggleTheme(): void {
+    this.themeDark = !this.themeDark
+    this.syncThemeClass()
+    try {
+      this.document.defaultView?.localStorage.setItem('tradeguru-theme', this.themeDark ? 'dark' : 'light')
+    } catch {
+      return
+    }
+  }
+
+  private syncThemeClass(): void {
+    const root = this.document.documentElement
+    if (this.themeDark) {
+      this.renderer.addClass(root, 'dark-theme')
+    } else {
+      this.renderer.removeClass(root, 'dark-theme')
+    }
   }
 
   get hasCharts(): boolean {
@@ -195,6 +232,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.paymentQrDataUrl = ''
     this.transactionReference = ''
     this.subscriptionDialogOpen = false
+    this.loginDialogOpen = false
     this.adminDialogOpen = false
     this.isPaymentAdmin = false
     this.adminPayments = []
@@ -212,6 +250,50 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   closeSubscriptionDialog(): void {
     this.subscriptionDialogOpen = false
+  }
+
+  async openLoginDialog(): Promise<void> {
+    if (this.authUser) return
+    this.authError = ''
+    this.googleLoading = true
+    this.loginDialogOpen = true
+    this.changeDetector.detectChanges()
+    try {
+      const response = await fetch('/api/auth/config')
+      const config = await response.json() as { clientId?: string; error?: string }
+      if (!response.ok || !config.clientId) {
+        throw new Error(config.error || 'Google sign-in is not configured on the server.')
+      }
+      await this.loadGoogleIdentityServices()
+      const google = window.google
+      const googleButtonElement = this.googleButton?.nativeElement
+      if (!google || !googleButtonElement) throw new Error('Google sign-in button could not be initialized.')
+
+      if (!this.googleIdentityInitialized) {
+        google.accounts.id.initialize({
+          client_id: config.clientId,
+          callback: response => { void this.completeGoogleSignIn(response.credential) },
+        })
+        this.googleIdentityInitialized = true
+      }
+      google.accounts.id.renderButton(googleButtonElement, {
+        theme: 'outline',
+        size: 'large',
+        text: 'continue_with',
+        shape: 'rectangular',
+        width: 320,
+      })
+    } catch (error) {
+      this.authError = error instanceof Error ? error.message : 'Google sign-in could not be loaded.'
+    } finally {
+      this.googleLoading = false
+      this.changeDetector.markForCheck()
+    }
+  }
+
+  closeLoginDialog(): void {
+    this.loginDialogOpen = false
+    this.authError = ''
   }
 
   openAdminDialog(): void {
@@ -378,13 +460,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   private async initializeAuth(): Promise<void> {
     try {
-      const [sessionResponse, configResponse] = await Promise.all([
-        fetch('/api/auth/session'),
-        fetch('/api/auth/config'),
-      ])
-      if (!sessionResponse.ok || !configResponse.ok) throw new Error('Could not connect to the sign-in service.')
+      const sessionResponse = await fetch('/api/auth/session')
+      if (!sessionResponse.ok) throw new Error('Could not connect to the sign-in service.')
       const session = await sessionResponse.json() as { user: { email: string; name: string } | null }
-      const config = await configResponse.json() as { clientId: string }
       this.authUser = session.user
 
       if (this.authUser) {
@@ -392,19 +470,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
         await this.refreshAdminPayments()
       } else {
         this.subscriptionLoading = false
-        if (!config.clientId) throw new Error('Google sign-in is not configured. Add GOOGLE_CLIENT_ID to the server environment.')
-        await this.loadGoogleIdentityServices()
-        window.google?.accounts.id.initialize({
-          client_id: config.clientId,
-          callback: response => { void this.completeGoogleSignIn(response.credential) },
-        })
-        window.google?.accounts.id.renderButton(this.googleButton.nativeElement, {
-          theme: 'outline',
-          size: 'large',
-          text: 'continue_with',
-          shape: 'rectangular',
-          width: 320,
-        })
+        this.isPaymentAdmin = false
       }
     } catch (error) {
       this.authError = error instanceof Error ? error.message : 'Google sign-in could not be loaded.'
@@ -427,6 +493,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       const result = await response.json() as { user?: { email: string; name: string }; error?: string }
       if (!response.ok || !result.user) throw new Error(result.error || 'Google sign-in could not be completed.')
       this.authUser = result.user
+      this.loginDialogOpen = false
       await this.refreshSubscription()
       await this.refreshAdminPayments()
     } catch (error) {

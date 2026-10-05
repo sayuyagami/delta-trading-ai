@@ -21,6 +21,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "hero.png",
+                "input": "src/assets",
+                "output": "assets"
               }
             ],
             "styles": ["src/index.css"]

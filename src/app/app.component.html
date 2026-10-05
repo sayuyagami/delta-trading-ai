@@ -1,14 +1,15 @@
-<div class="auth-gate" [class.auth-gate-hidden]="authUser && !subscriptionDialogOpen && !adminDialogOpen" [attr.aria-hidden]="authUser && !subscriptionDialogOpen && !adminDialogOpen ? 'true' : 'false'">
-  @if (!authUser) {
+<div class="auth-gate" [class.auth-gate-hidden]="(!authUser && !loginDialogOpen) || (authUser && !subscriptionDialogOpen && !adminDialogOpen)" [attr.aria-hidden]="(!authUser && !loginDialogOpen) || (authUser && !subscriptionDialogOpen && !adminDialogOpen) ? 'true' : 'false'">
+  @if (!authUser && loginDialogOpen) {
     <dialog open class="auth-dialog" aria-labelledby="auth-title">
       <div class="brand auth-brand"><span class="brand-mark">T</span><span>Trade<span class="brand-accent">Guru</span></span></div>
+      <button class="dialog-dismiss" type="button" (click)="closeLoginDialog()" aria-label="Close sign-in popup" title="Close">×</button>
       <p class="eyebrow">YOUR CHART WORKSPACE</p>
       <h1 id="auth-title">Sign in or create an account</h1>
       <p class="auth-copy">Continue with your Google account to access chart analysis.</p>
-      @if (authLoading) {
+      @if (googleLoading) {
         <output class="auth-progress" aria-live="polite"><span class="loading-dot"></span>Connecting to Google…</output>
       }
-      <div #googleButton class="google-button" [class.google-button-pending]="authLoading || authError"></div>
+      <div #googleButton class="google-button" [class.google-button-pending]="googleLoading || authError"></div>
       @if (authError) { <p class="auth-error" role="alert">{{ authError }}</p> }
       <p class="auth-privacy">Your Google password is never shared with TradeGuru.</p>
     </dialog>
@@ -42,7 +43,7 @@
       @if (adminMessage) { <output class="billing-output" aria-live="polite">{{ adminMessage }}</output> }
       <button class="secondary-button" (click)="refreshAdminPayments()" [disabled]="adminLoading || !!adminBusyRequestId">Refresh queue</button>
     </dialog>
-  } @else {
+  } @else if (authUser) {
     <dialog open class="auth-dialog subscription-dialog" aria-labelledby="subscription-title">
       <div class="brand auth-brand"><span class="brand-mark">T</span><span>Trade<span class="brand-accent">Guru</span></span></div>
       @if (subscription?.status !== 'completed') { <button class="dialog-dismiss" type="button" (click)="closeSubscriptionDialog()" aria-label="Close payment popup" title="Close">×</button> }
@@ -89,11 +90,217 @@
   }
 </div>
 
+@if (!authUser) {
+  <main class="landing-page" id="top">
+    <header class="landing-nav">
+      <a class="landing-brand" href="#top" aria-label="TradeGuru home">
+        <span class="brand-mark">T</span>
+        <span class="landing-brand-copy"><strong>Trade<span class="brand-accent">Guru</span></strong><small>AI Chart Intelligence</small></span>
+      </a>
+      <nav class="landing-links" aria-label="Main navigation">
+        <a href="#how-it-works">How it works</a>
+        <a href="#example-analysis">Example</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <div class="landing-nav-actions">
+        <button class="theme-toggle" type="button" role="switch" aria-label="Dark mode" [attr.aria-checked]="themeDark" [attr.title]="themeDark ? 'Switch to bright mode' : 'Switch to dark mode'" (click)="toggleTheme()"><span class="theme-toggle-track" aria-hidden="true"><span></span></span><span class="theme-toggle-label">Dark mode</span></button>
+        <button class="landing-signin" (click)="openLoginDialog()">Sign in</button>
+        <button class="landing-nav-cta" (click)="openLoginDialog()">Analyze My Chart <span aria-hidden="true">→</span></button>
+      </div>
+    </header>
+
+    <section class="landing-hero" aria-labelledby="landing-title">
+      <div class="landing-hero-copy">
+        <p class="eyebrow">AI-POWERED CHART INTELLIGENCE</p>
+        <h1 id="landing-title">Turn your trading chart into a structured trade plan.</h1>
+        <p class="landing-subtitle">Upload your 1H chart and get a structured read of direction, a potential entry, stop loss, target, risk/reward, and the reasoning behind the setup.</p>
+        <div class="landing-hero-actions">
+          <button class="landing-primary" (click)="openLoginDialog()">Analyze My 1H Chart <span aria-hidden="true">→</span></button>
+          <a class="landing-secondary" href="#example-analysis">See Example Analysis</a>
+        </div>
+        <p class="landing-reassurance">No complicated setup. Upload a chart and see what TradeGuru finds.</p>
+      </div>
+
+      <section class="analysis-demo" id="example-analysis" aria-label="Illustrative example analysis">
+        <div class="demo-heading"><div><p class="eyebrow">EXAMPLE ANALYSIS</p><strong>See exactly what TradeGuru gives you.</strong></div><span class="sample-chip">ILLUSTRATIVE ONLY</span></div>
+        <div class="demo-grid">
+          <section class="demo-chart" aria-label="Illustrative BTCUSDT one-hour chart">
+            <div class="demo-market"><strong>BTCUSDT</strong><span>PERPETUAL</span><span class="demo-timeframe">1H</span></div>
+            <svg class="demo-candles" viewBox="0 0 720 330" role="img" aria-label="Illustrative rising one-hour candlestick chart with sample entry, stop, and target levels">
+              <path class="demo-gridline" d="M24 52H690M24 108H690M24 164H690M24 220H690M24 276H690" />
+              <line class="demo-level demo-target" x1="25" y1="82" x2="690" y2="82" />
+              <line class="demo-level demo-entry" x1="25" y1="163" x2="690" y2="163" />
+              <line class="demo-level demo-stop" x1="25" y1="253" x2="690" y2="253" />
+              <g class="demo-red"><line x1="65" y1="144" x2="65" y2="230" /><rect x="54" y="166" width="22" height="43" /><line x1="118" y1="157" x2="118" y2="244" /><rect x="107" y="180" width="22" height="44" /><line x1="171" y1="173" x2="171" y2="258" /><rect x="160" y="197" width="22" height="42" /></g>
+              <g class="demo-green"><line x1="224" y1="181" x2="224" y2="251" /><rect x="213" y="190" width="22" height="37" /><line x1="277" y1="151" x2="277" y2="211" /><rect x="266" y="165" width="22" height="39" /><line x1="330" y1="135" x2="330" y2="190" /><rect x="319" y="143" width="22" height="36" /></g>
+              <g class="demo-red"><line x1="383" y1="140" x2="383" y2="203" /><rect x="372" y="155" width="22" height="30" /></g>
+              <g class="demo-green"><line x1="436" y1="119" x2="436" y2="177" /><rect x="425" y="128" width="22" height="38" /><line x1="489" y1="105" x2="489" y2="151" /><rect x="478" y="111" width="22" height="30" /><line x1="542" y1="89" x2="542" y2="142" /><rect x="531" y="98" width="22" height="34" /><line x1="595" y1="72" x2="595" y2="119" /><rect x="584" y="83" width="22" height="26" /><line x1="648" y1="59" x2="648" y2="101" /><rect x="637" y="68" width="22" height="24" /></g>
+              <text class="demo-label demo-target-label" x="680" y="76" text-anchor="end">TARGET</text>
+              <text class="demo-label demo-entry-label" x="680" y="157" text-anchor="end">ENTRY</text>
+              <text class="demo-label demo-stop-label" x="680" y="247" text-anchor="end">STOP</text>
+            </svg>
+            <div class="demo-chart-caption"><span>Sample price structure</span><span>Not live market data</span></div>
+          </section>
+          <aside class="demo-report" aria-label="Illustrative chart report">
+            <div class="demo-report-heading"><span>CHART READ</span><span class="demo-confidence">EXAMPLE</span></div>
+            <h2>BULLISH</h2>
+            <p class="demo-setup-note">Illustrative values · not a live signal</p>
+            <dl class="demo-levels">
+              <div><dt>Potential entry</dt><dd>$67,420</dd></div>
+              <div><dt>Stop loss</dt><dd>$66,880</dd></div>
+              <div><dt>Target</dt><dd>$69,040</dd></div>
+              <div><dt>Risk / reward</dt><dd>3.00 : 1</dd></div>
+            </dl>
+            <div class="demo-reasoning"><span>WHY THIS READ</span><p>A sample explanation of visible structure and key levels. Real results depend on the chart you upload.</p></div>
+          </aside>
+        </div>
+        <p class="demo-disclaimer">Example layout only. TradeGuru analysis can be incomplete or inaccurate and is not financial advice.</p>
+        <button class="demo-action" (click)="openLoginDialog()">Analyze your own chart <span aria-hidden="true">→</span></button>
+      </section>
+    </section>
+
+    <section class="landing-problem" aria-labelledby="problem-title">
+      <div class="landing-section-heading">
+        <p class="eyebrow">THE HARD PART</p>
+        <h2 id="problem-title">The hardest part isn't finding a chart.</h2>
+        <p>It's knowing what the chart is actually telling you.</p>
+      </div>
+      <div class="problem-grid">
+        <article><span>01 / ENTRY</span><h3>Where should I enter?</h3><p>You can see a setup, but the area to consider isn't always obvious.</p></article>
+        <article><span>02 / INVALIDATION</span><h3>Where should I exit?</h3><p>A trade without a defined invalidation level can expose you to unnecessary risk.</p></article>
+        <article><span>03 / PATIENCE</span><h3>Is this setup even worth taking?</h3><p>Sometimes the best decision is waiting for a clearer picture.</p></article>
+      </div>
+      <div class="no-trade-callout">
+        <div><p class="eyebrow">A CLEARER WAY TO WAIT</p><h3>TradeGuru doesn't just look for trades.</h3><p>When a chart doesn't support a clear plan, the analysis can return <strong>NO_TRADE</strong> with a rationale instead of forcing levels.</p></div>
+        <div class="no-trade-example" aria-label="Illustrative no-trade analysis">
+          <div class="no-trade-example-heading"><span>MARKET READ</span><span>ILLUSTRATIVE</span></div>
+          <strong>NO CLEAR SETUP</strong>
+          <p>Example rationale: the visible structure does not support a clear plan.</p>
+          <div class="wait-note">TradeGuru suggests waiting for stronger confirmation.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="landing-outputs" aria-labelledby="outputs-title">
+      <div class="landing-section-heading">
+        <p class="eyebrow">ONE CHART, STRUCTURED CONTEXT</p>
+        <h2 id="outputs-title">From one chart, get a complete market read.</h2>
+        <p>Review the estimates and rationale together. If the image is unclear, some levels may not be available.</p>
+      </div>
+      <div class="output-grid">
+        <article><span>01</span><h3>Direction</h3><p>Long, short, or no trade.</p></article>
+        <article><span>02</span><h3>Entry</h3><p>A potential price level to consider, when the chart supports one.</p></article>
+        <article><span>03</span><h3>Stop loss</h3><p>An estimated level where the setup may be considered invalid.</p></article>
+        <article><span>04</span><h3>Target</h3><p>A first potential objective based on the visible chart.</p></article>
+        <article><span>05</span><h3>Risk / reward</h3><p>See the potential distance between entry, stop, and target.</p></article>
+        <article><span>06</span><h3>Confidence and reasoning</h3><p>Read the model's confidence and its explanation of visible chart evidence.</p></article>
+      </div>
+      <p class="outputs-note">These are image-based estimates, not instructions or guaranteed outcomes. Verify levels independently.</p>
+    </section>
+
+    <section class="landing-why" aria-labelledby="why-title">
+      <div class="why-copy">
+        <p class="eyebrow">SHOW YOUR WORK</p>
+        <h2 id="why-title">Don't just get levels. Understand why.</h2>
+        <p>TradeGuru is designed to explain the visible chart evidence behind its read, rather than present a level without context.</p>
+        <strong>TradeGuru explains the chart instead of simply throwing a signal at you.</strong>
+      </div>
+      <div class="why-example">
+        <span>WHAT THE RATIONALE SHOULD HELP YOU REVIEW</span>
+        <ul>
+          <li>Which visible price structure informed the read</li>
+          <li>Why the suggested levels may matter on this chart</li>
+          <li>What uncertainty remains in an image-based estimate</li>
+          <li>Where the setup may no longer make sense</li>
+        </ul>
+        <p>Any explanation depends on the chart you upload. Always verify it yourself.</p>
+      </div>
+    </section>
+
+    <section class="landing-how" id="how-it-works" aria-labelledby="how-title">
+      <div class="landing-section-heading">
+        <p class="eyebrow">A SIMPLE WORKFLOW</p>
+        <h2 id="how-title">Three steps from chart to analysis.</h2>
+      </div>
+      <div class="how-grid">
+        <article><span>01</span><h3>Upload</h3><strong>Bring your chart</strong><p>Upload a screenshot of your 1H trading chart.</p></article>
+        <article><span>02</span><h3>Analyze</h3><strong>Let TradeGuru read the setup</strong><p>Review its image-based read of visible structure, levels, and context.</p></article>
+        <article><span>03</span><h3>Decide</h3><strong>Build your plan</strong><p>Consider the potential entry, stop, target, risk/reward, and rationale.</p></article>
+      </div>
+      <button class="landing-primary" (click)="openLoginDialog()">Try TradeGuru <span aria-hidden="true">→</span></button>
+    </section>
+
+    <section class="landing-audience" id="about" aria-labelledby="audience-title">
+      <div class="landing-section-heading">
+        <p class="eyebrow">BUILT FOR TRADERS</p>
+        <h2 id="audience-title">Whether you're learning or already trading, start with the chart.</h2>
+      </div>
+      <div class="audience-grid">
+        <article><h3>Beginner</h3><p>Turn complicated chart movements into an easier-to-review read of market structure.</p></article>
+        <article><h3>Active trader</h3><p>Get a second perspective to consider before making your own trading decision.</p></article>
+        <article><h3>Technical trader</h3><p>Review a potential entry, invalidation level, target, and risk/reward in one place.</p></article>
+      </div>
+    </section>
+
+    <section class="landing-pricing" id="pricing">
+      <div><p class="eyebrow">SIMPLE ACCESS</p><h2>One month. One clear price.</h2><p>₹99 for one calendar month. One-time UPI payment, manually verified. No auto-renewal.</p></div>
+      <button class="landing-primary" (click)="openLoginDialog()">Analyze My Chart <span aria-hidden="true">→</span></button>
+    </section>
+
+    <section class="landing-trust" aria-labelledby="trust-title">
+      <div class="trust-heading"><p class="eyebrow">CLEAR EXPECTATIONS</p><h2 id="trust-title">TradeGuru is a decision-support tool, not a crystal ball.</h2></div>
+      <div class="trust-columns">
+        <div class="trust-column trust-limitations"><h3>What it cannot promise</h3><ul><li>No guaranteed profits</li><li>No guaranteed predictions</li><li>No promise that every setup will work</li></ul></div>
+        <div class="trust-column trust-capabilities"><h3>What it can provide</h3><ul><li>Structured chart analysis</li><li>Potential levels and risk context</li><li>Reasoning and a no-trade outcome when the chart is unclear</li></ul></div>
+      </div>
+    </section>
+
+    <section class="landing-final-cta" aria-labelledby="final-cta-title">
+      <img class="landing-cta-illustration" src="/assets/hero.png" width="343" height="361" loading="lazy" alt="Layered geometric illustration in violet" />
+      <div class="landing-final-cta-copy">
+        <p class="eyebrow">START WITH THE CHART</p>
+        <h2 id="final-cta-title">Your next trade starts with understanding the chart.</h2>
+        <p>Upload your 1H chart and see what TradeGuru finds.</p>
+        <button class="landing-primary" (click)="openLoginDialog()">Analyze My Chart <span aria-hidden="true">→</span></button>
+        <small>TradeGuru provides chart-based analysis for informational and educational purposes only.</small>
+      </div>
+    </section>
+
+    <section class="landing-faq" id="faq">
+      <p class="eyebrow">FAQ</p>
+      <h2>Before you upload</h2>
+      <details><summary>What is TradeGuru?</summary><p>TradeGuru is an AI-powered chart analysis tool that reviews uploaded trading charts and provides structured market insights for your consideration.</p></details>
+      <details><summary>What does TradeGuru analyze?</summary><p>Depending on the chart and available information, it can provide market direction, a potential entry level, stop loss, one target, risk/reward, confidence, and reasoning.</p></details>
+      <details><summary>What timeframe should I upload?</summary><p>TradeGuru is designed around one-hour (1H) chart screenshots.</p></details>
+      <details><summary>Does TradeGuru guarantee profits?</summary><p>No. TradeGuru does not guarantee trading results or future market movements.</p></details>
+      <details><summary>Is TradeGuru financial advice?</summary><p>No. It is a chart-analysis and decision-support tool. You remain responsible for your trading decisions.</p></details>
+      <details><summary>Which markets are supported?</summary><p>The current instrument selector offers BTCUSDT, ETHUSDT, SOLUSDT, and FARTCOINUSD perpetual chart labels. TradeGuru analyzes the image you upload; it does not fetch live exchange prices.</p></details>
+      <details><summary>How does paid access work?</summary><p>₹99 provides one calendar month of access after your UPI payment is manually confirmed. There is no automatic renewal.</p></details>
+    </section>
+
+    <section class="landing-risk" id="risk-disclaimer" aria-labelledby="risk-title">
+      <p class="eyebrow">RISK DISCLAIMER</p>
+      <h2 id="risk-title">Make your own informed decisions.</h2>
+      <p><strong>Risk Disclaimer:</strong> TradeGuru provides chart-based analysis for informational and educational purposes only. Analysis may be inaccurate or incomplete and is not a guarantee of future performance. Trading involves substantial risk, including possible loss of capital. Users are responsible for their own trading decisions.</p>
+    </section>
+
+    <footer class="landing-footer">
+      <div class="landing-footer-main">
+        <div class="landing-footer-brand"><a class="landing-brand" href="#top"><span class="brand-mark">T</span><span class="landing-brand-copy"><strong>Trade<span class="brand-accent">Guru</span></strong><small>AI Chart Intelligence</small></span></a><p>Turn your charts into structured analysis.</p></div>
+        <nav class="landing-footer-group" aria-label="Product links"><strong>Product</strong><a href="#how-it-works">How it works</a><a href="#example-analysis">Example analysis</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></nav>
+        <nav class="landing-footer-group" aria-label="Company links"><strong>Company</strong><a href="#about">About</a><a href="mailto:analysis@tradeguru.com">Contact</a><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a></nav>
+        <div class="landing-footer-group landing-footer-risk"><strong>Risk</strong><a href="#risk-disclaimer">Trading involves substantial risk.</a><span>TradeGuru does not guarantee trading results.</span></div>
+      </div>
+      <div class="landing-footer-bottom"><span>© 2026 TradeGuru</span><button (click)="openLoginDialog()">Sign in</button></div>
+    </footer>
+  </main>
+} @else {
 <main class="app-shell" [attr.inert]="!authUser || subscriptionDialogOpen || adminDialogOpen ? '' : null">
   <header class="topbar">
     <div class="brand"><span class="brand-mark">T</span><span>Trade<span class="brand-accent">Guru</span></span></div>
-    <nav><a class="active" href="#workspace">Workspace</a></nav>
-    @if (authUser) { <div class="status"><span class="status-dot"></span><span class="user-name">{{ authUser.name }}</span><span class="subscription-pill" [class.subscription-pill-active]="subscription?.active">{{ subscription?.active ? 'Subscribed' : 'Free' }}</span>@if (isPaymentAdmin) { <button class="manage-subscription" (click)="openAdminDialog()">Payment review <span class="review-count">{{ adminPayments.length }}</span></button> }<button class="manage-subscription" (click)="openSubscriptionDialog()">Manage</button><button class="sign-out" (click)="signOut()" aria-label="Sign out">Sign out</button></div> }
+    <nav aria-label="Workspace navigation"><a class="active" href="#workspace">Workspace</a></nav>
+    @if (authUser) { <div class="status"><span class="status-dot"></span><span class="user-name">{{ authUser.name }}</span><span class="subscription-pill" [class.subscription-pill-active]="subscription?.active">{{ subscription?.active ? 'Subscribed' : 'Free' }}</span>@if (isPaymentAdmin) { <button class="manage-subscription" (click)="openAdminDialog()">Payment review <span class="review-count">{{ adminPayments.length }}</span></button> }<button class="manage-subscription" (click)="openSubscriptionDialog()">Manage</button><button class="theme-toggle" type="button" role="switch" aria-label="Dark mode" [attr.aria-checked]="themeDark" [attr.title]="themeDark ? 'Switch to bright mode' : 'Switch to dark mode'" (click)="toggleTheme()"><span class="theme-toggle-track" aria-hidden="true"><span></span></span><span class="theme-toggle-label">Dark mode</span></button><button class="sign-out" (click)="signOut()" aria-label="Sign out">Sign out</button></div> }
   </header>
 
   <section class="intro" id="workspace">
@@ -142,3 +349,4 @@
   </section>
   <footer><span>TradeGuru <b>v0.1 demo</b></span><span>Analysis is informational, not financial advice. Always manage your own risk.</span><span>Data delayed · Paper mode</span></footer>
 </main>
+}
