@@ -39,9 +39,11 @@ button, select { cursor: pointer; }
 .manage-subscription, .sign-out { padding: 6px 9px; border: 1px solid var(--line); border-radius: 5px; background: white; color: var(--muted); font-size: 10px; text-transform: none; }
 .manage-subscription:hover, .sign-out:hover { border-color: var(--accent); color: var(--accent-dark); }
 
-.auth-gate { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(33, 30, 43, .58); backdrop-filter: blur(5px); }
+.auth-gate { position: fixed; z-index: 20; inset: 0; display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; overscroll-behavior-y: contain; scroll-padding-block: 24px; padding: 24px; background: rgba(33, 30, 43, .58); backdrop-filter: blur(5px); }
 .auth-gate-hidden { display: none; }
-.auth-dialog { position: relative; width: min(100%, 420px); margin: 0; padding: 34px; border: 1px solid #e6e1ec; border-radius: 10px; background: white; color: var(--ink); box-shadow: 0 24px 80px rgba(20, 18, 30, .24); animation: auth-arrive .25s ease-out both; }
+.auth-dialog { position: relative; flex: 0 0 auto; width: min(100%, 420px); margin: auto 0; padding: 34px; border: 1px solid #e6e1ec; border-radius: 10px; background: white; color: var(--ink); box-shadow: 0 24px 80px rgba(20, 18, 30, .24); animation: auth-arrive .25s ease-out both; }
+.dialog-dismiss { position: absolute; top: 14px; right: 14px; display: grid; width: 30px; height: 30px; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: white; color: var(--muted); cursor: pointer; font-size: 19px; line-height: 1; }
+.dialog-dismiss:hover { border-color: var(--accent); color: var(--accent-dark); }
 .auth-brand { margin-bottom: 30px; }
 .auth-dialog .eyebrow { margin-bottom: 9px; }
 .auth-dialog h1 { margin: 0; color: var(--ink); font: 500 27px/1.2 Georgia, serif; }
@@ -203,6 +205,11 @@ footer b { color: var(--ink); font-weight: 600; }
 	.chart-legend { padding-inline: 14px; }
 	footer { flex-direction: column; gap: 7px; padding: 14px 20px; }
 	.auth-dialog { padding: 28px 22px; }
+}
+
+@media (max-height: 700px) {
+	.auth-gate { padding-block: 16px; }
+	.auth-dialog { margin-block: 0 16px; }
 }
 
 @media (max-width: 380px) {

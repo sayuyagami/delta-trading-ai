@@ -15,6 +15,7 @@
   } @else {
     <dialog open class="auth-dialog subscription-dialog" aria-labelledby="subscription-title">
       <div class="brand auth-brand"><span class="brand-mark">T</span><span>Trade<span class="brand-accent">Guru</span></span></div>
+      @if (subscription?.status !== 'completed') { <button class="dialog-dismiss" type="button" (click)="closeSubscriptionDialog()" aria-label="Close payment popup" title="Close">×</button> }
       @if (subscription?.active) {
         <p class="eyebrow">YOUR MEMBERSHIP</p>
         <h1 id="subscription-title">Subscription active</h1>
@@ -85,7 +86,7 @@
         <div class="panel-heading"><span class="step">02</span><div><h2>Market context</h2><p>Help the model read the setup</p></div></div>
         <label class="field-label">Instrument<select [value]="instrument" (change)="instrument = $any($event.target).value"><option>FARTCOINUSD perpetual</option><option>BTCUSDT perpetual</option><option>ETHUSDT perpetual</option><option>SOLUSDT perpetual</option></select></label>
         <label class="field-label">Trade bias<select [value]="tradeBias" (change)="tradeBias = $any($event.target).value"><option>Both directions</option><option>Long setups only</option><option>Short setups only</option></select></label>
-        <button class="primary-button" (click)="onAnalyze()" [disabled]="subscriptionLoading || (subscription?.active && (!hasCharts || analyzing)) || billingBusy" [attr.aria-busy]="analyzing || subscriptionLoading"><span aria-hidden="true">{{ subscription?.active ? '✦' : '₹' }}</span>{{ subscriptionLoading ? 'Checking plan…' : analyzing ? 'Reading your chart…' : subscription?.active ? 'Analyze 1H chart' : 'Pay ₹99 · 1 month' }}<span class="arrow" aria-hidden="true">→</span></button>
+        <button class="primary-button" (click)="onAnalyze()" [disabled]="(!subscription?.active && subscriptionLoading) || (subscription?.active && (!hasCharts || analyzing)) || billingBusy" [attr.aria-busy]="analyzing || (!subscription?.active && subscriptionLoading)"><span aria-hidden="true">{{ subscription?.active ? '✦' : '₹' }}</span>{{ subscriptionLoading && !subscription?.active ? 'Checking plan…' : analyzing ? 'Reading your chart…' : subscription?.active ? 'Analyze 1H chart' : 'Pay ₹99 · 1 month' }}<span class="arrow" aria-hidden="true">→</span></button>
         @if (analysisError) { <p class="analysis-error" role="alert">{{ analysisError }}</p> } @else if (!subscription?.active) { <p class="action-hint">One-time payment unlocks one month of analysis. No auto-renewal.</p> } @else if (!hasCharts) { <p class="action-hint">Add your 1H screenshot to unlock analysis.</p> }
       </div>
       <div class="privacy-note"><span>⌁</span><p>Your chart is sent to Google Gemini only when you analyze it. No order will be placed.</p></div>
