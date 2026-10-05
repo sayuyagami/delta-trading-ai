@@ -45,6 +45,15 @@ interface ManualPaymentRequest {
   upiUri: string
 }
 
+interface AdminPaymentReview {
+  google_sub: string
+  email: string
+  name: string
+  manual_payment_request_id: string
+  manual_payment_reference: string
+  manual_payment_submitted_at: string
+}
+
 type ChartTimeframe = '1H'
 
 @Component({
@@ -68,6 +77,13 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   billingBusy = false
   billingError = ''
   subscriptionDialogOpen = false
+  isPaymentAdmin = false
+  adminDialogOpen = false
+  adminPayments: AdminPaymentReview[] = []
+  adminLoading = false
+  adminBusyRequestId = ''
+  adminError = ''
+  adminMessage = ''
   private subscriptionExpiryTimer: ReturnType<typeof setTimeout> | null = null
   oneHourFile: File | null = null
   oneHourFileName = 'No 1H chart selected'
@@ -179,6 +195,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.paymentQrDataUrl = ''
     this.transactionReference = ''
     this.subscriptionDialogOpen = false
+    this.adminDialogOpen = false
+    this.isPaymentAdmin = false
+    this.adminPayments = []
     this.analysis = null
     this.authError = ''
     this.authLoading = true
@@ -193,6 +212,70 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   closeSubscriptionDialog(): void {
     this.subscriptionDialogOpen = false
+  }
+
+  openAdminDialog(): void {
+    this.adminError = ''
+    this.adminMessage = ''
+    this.adminDialogOpen = true
+    void this.refreshAdminPayments()
+  }
+
+  closeAdminDialog(): void {
+    this.adminDialogOpen = false
+  }
+
+  async refreshAdminPayments(): Promise<void> {
+    if (!this.authUser) return
+    this.adminLoading = true
+    this.adminError = ''
+    try {
+      const response = await fetch('/api/admin/payments')
+      const result = await response.json() as { isAdmin?: boolean; payments?: AdminPaymentReview[]; error?: string }
+      if (!response.ok) throw new Error(result.error || 'Could not load payment reviews.')
+      this.isPaymentAdmin = Boolean(result.isAdmin)
+      this.adminPayments = result.payments || []
+      if (!this.isPaymentAdmin) this.adminDialogOpen = false
+    } catch (error) {
+      this.adminError = error instanceof Error ? error.message : 'Could not load payment reviews.'
+    } finally {
+      this.adminLoading = false
+      this.changeDetector.markForCheck()
+    }
+  }
+
+  async reviewManualPayment(payment: AdminPaymentReview, decision: 'approve' | 'reject'): Promise<void> {
+    if (!this.isPaymentAdmin || this.adminBusyRequestId) return
+    if (decision === 'approve' && !window.confirm(`Confirm the ₹99 payment from ${payment.email} (${payment.manual_payment_reference}) has arrived in your account?`)) return
+
+    this.adminBusyRequestId = payment.manual_payment_request_id
+    this.adminError = ''
+    this.adminMessage = ''
+    try {
+      const response = await fetch('/api/admin/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          googleSub: payment.google_sub,
+          requestId: payment.manual_payment_request_id,
+          reference: payment.manual_payment_reference,
+          decision,
+          note: decision === 'approve' ? 'Verified as received in bank account' : 'Payment could not be verified',
+        }),
+      })
+      const result = await response.json() as { payment?: AdminPaymentReview; error?: string }
+      if (!response.ok) throw new Error(result.error || 'Could not review this payment.')
+      this.adminPayments = this.adminPayments.filter(item => item.manual_payment_request_id !== payment.manual_payment_request_id)
+      this.adminMessage = decision === 'approve'
+        ? `Payment approved. ${payment.email} now has one month of access.`
+        : `Payment rejected. ${payment.email} can submit a new reference.`
+      if (payment.email === this.authUser?.email) await this.refreshSubscription()
+    } catch (error) {
+      this.adminError = error instanceof Error ? error.message : 'Could not review this payment.'
+    } finally {
+      this.adminBusyRequestId = ''
+      this.changeDetector.markForCheck()
+    }
   }
 
   formatSubscriptionDate(value: string): string {
@@ -306,6 +389,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
       if (this.authUser) {
         await this.refreshSubscription()
+        await this.refreshAdminPayments()
       } else {
         this.subscriptionLoading = false
         if (!config.clientId) throw new Error('Google sign-in is not configured. Add GOOGLE_CLIENT_ID to the server environment.')
@@ -344,6 +428,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       if (!response.ok || !result.user) throw new Error(result.error || 'Google sign-in could not be completed.')
       this.authUser = result.user
       await this.refreshSubscription()
+      await this.refreshAdminPayments()
     } catch (error) {
       this.authError = error instanceof Error ? error.message : 'Google sign-in could not be completed.'
     } finally {

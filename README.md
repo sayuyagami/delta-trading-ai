@@ -67,6 +67,8 @@ Chart analysis costs ₹99 for one calendar month of access. Customers pay manua
 
 The payment dialog generates a per-request UPI QR using `MANUAL_PAYMENT_UPI_ID`, with ₹99 and a unique request reference encoded in the payment URI. It shows the configured payee name but does not display the UPI ID as text. Set `MANUAL_PAYMENT_UPI_ID` and `MANUAL_PAYMENT_PAYEE_NAME` in `.env` and in the production environment. UPI apps generally prefill the encoded amount; whether the payer can edit it depends on their app, so only approve access after confirming exactly ₹99 arrived. Use a UPI account your bank/payment provider permits for receiving these payments. Create a Supabase project, then run [`supabase/schema.sql`](supabase/schema.sql) in its SQL Editor. Set `SUPABASE_URL` and the server-only `SUPABASE_SERVICE_ROLE_KEY`; never expose the service-role key in browser code.
 
+Set `ADMIN_EMAILS` to a comma-separated allowlist of Google account email addresses allowed to review payments. This value stays server-side and is checked on every admin API request. Sign in with an allowlisted account and use **Payment review** in the header to approve or reject pending references. Each decision records the reviewer in `manual_payment_reviews`.
+
 To review submitted payments, run this in Supabase SQL Editor and verify each reference against your bank/UPI transaction history:
 
 ```sql

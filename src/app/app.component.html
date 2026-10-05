@@ -1,4 +1,4 @@
-<div class="auth-gate" [class.auth-gate-hidden]="authUser && !subscriptionDialogOpen" [attr.aria-hidden]="authUser && !subscriptionDialogOpen ? 'true' : 'false'">
+<div class="auth-gate" [class.auth-gate-hidden]="authUser && !subscriptionDialogOpen && !adminDialogOpen" [attr.aria-hidden]="authUser && !subscriptionDialogOpen && !adminDialogOpen ? 'true' : 'false'">
   @if (!authUser) {
     <dialog open class="auth-dialog" aria-labelledby="auth-title">
       <div class="brand auth-brand"><span class="brand-mark">T</span><span>Trade<span class="brand-accent">Guru</span></span></div>
@@ -11,6 +11,36 @@
       <div #googleButton class="google-button" [class.google-button-pending]="authLoading || authError"></div>
       @if (authError) { <p class="auth-error" role="alert">{{ authError }}</p> }
       <p class="auth-privacy">Your Google password is never shared with TradeGuru.</p>
+    </dialog>
+  } @else if (adminDialogOpen && isPaymentAdmin) {
+    <dialog open class="auth-dialog admin-dialog" aria-labelledby="admin-title">
+      <div class="brand auth-brand"><span class="brand-mark">T</span><span>Trade<span class="brand-accent">Guru</span></span></div>
+      <button class="dialog-dismiss" type="button" (click)="closeAdminDialog()" aria-label="Close payment review" title="Close">×</button>
+      <p class="eyebrow">ADMIN REVIEW</p>
+      <h1 id="admin-title">Payment review</h1>
+      <p class="auth-copy">Match each UPI reference against your bank transactions before approving access.</p>
+      @if (adminLoading) {
+        <output class="auth-progress" aria-live="polite"><span class="loading-dot"></span>Loading pending payments…</output>
+      } @else if (!adminPayments.length) {
+        <p class="billing-detail">No payments are waiting for review.</p>
+      } @else {
+        <div class="admin-payment-list">
+          @for (payment of adminPayments; track payment.manual_payment_request_id) {
+            <article class="admin-payment-row">
+              <div class="admin-payment-top"><strong>{{ payment.name || payment.email }}</strong><time>{{ formatSubscriptionDate(payment.manual_payment_submitted_at) }}</time></div>
+              <p>{{ payment.email }}</p>
+              <dl class="admin-payment-meta"><div><dt>UPI reference</dt><dd>{{ payment.manual_payment_reference }}</dd></div><div><dt>Amount</dt><dd>₹99</dd></div></dl>
+              <div class="admin-payment-actions">
+                <button class="admin-approve" (click)="reviewManualPayment(payment, 'approve')" [disabled]="!!adminBusyRequestId">{{ adminBusyRequestId === payment.manual_payment_request_id ? 'Updating…' : 'Approve verified ₹99' }}</button>
+                <button class="admin-reject" (click)="reviewManualPayment(payment, 'reject')" [disabled]="!!adminBusyRequestId">Reject</button>
+              </div>
+            </article>
+          }
+        </div>
+      }
+      @if (adminError) { <p class="auth-error" role="alert">{{ adminError }}</p> }
+      @if (adminMessage) { <output class="billing-output" aria-live="polite">{{ adminMessage }}</output> }
+      <button class="secondary-button" (click)="refreshAdminPayments()" [disabled]="adminLoading || !!adminBusyRequestId">Refresh queue</button>
     </dialog>
   } @else {
     <dialog open class="auth-dialog subscription-dialog" aria-labelledby="subscription-title">
@@ -59,11 +89,11 @@
   }
 </div>
 
-<main class="app-shell" [attr.inert]="!authUser || subscriptionDialogOpen ? '' : null">
+<main class="app-shell" [attr.inert]="!authUser || subscriptionDialogOpen || adminDialogOpen ? '' : null">
   <header class="topbar">
     <div class="brand"><span class="brand-mark">T</span><span>Trade<span class="brand-accent">Guru</span></span></div>
     <nav><a class="active" href="#workspace">Workspace</a></nav>
-    @if (authUser) { <div class="status"><span class="status-dot"></span><span class="user-name">{{ authUser.name }}</span><span class="subscription-pill" [class.subscription-pill-active]="subscription?.active">{{ subscription?.active ? 'Subscribed' : 'Free' }}</span><button class="manage-subscription" (click)="openSubscriptionDialog()">Manage</button><button class="sign-out" (click)="signOut()" aria-label="Sign out">Sign out</button></div> }
+    @if (authUser) { <div class="status"><span class="status-dot"></span><span class="user-name">{{ authUser.name }}</span><span class="subscription-pill" [class.subscription-pill-active]="subscription?.active">{{ subscription?.active ? 'Subscribed' : 'Free' }}</span>@if (isPaymentAdmin) { <button class="manage-subscription" (click)="openAdminDialog()">Payment review <span class="review-count">{{ adminPayments.length }}</span></button> }<button class="manage-subscription" (click)="openSubscriptionDialog()">Manage</button><button class="sign-out" (click)="signOut()" aria-label="Sign out">Sign out</button></div> }
   </header>
 
   <section class="intro" id="workspace">

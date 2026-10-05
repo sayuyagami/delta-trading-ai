@@ -1,7 +1,7 @@
 import { createServer } from 'node:http'
 import { GoogleGenAI, Type } from '@google/genai'
 import { authIsConfigured, clearSessionCookie, createSessionCookie, readSession, verifyGoogleCredential } from './api/_auth.mjs'
-import { BillingError, billingIsConfigured, handleBillingAction } from './api/_manual-payment.mjs'
+import { BillingError, billingIsConfigured, handleAdminPaymentAction, handleBillingAction, isManualPaymentAdmin } from './api/_manual-payment.mjs'
 
 const port = Number(process.env.API_PORT || 3001)
 const maxImageBytes = 10 * 1024 * 1024
@@ -117,6 +117,32 @@ const server = createServer(async (request, response) => {
       sendJson(response, 200, { user: { email: user.email, name: user.name } })
     } catch {
       sendJson(response, 401, { error: 'Google sign-in could not be verified. Please try again.' })
+    }
+    return
+  }
+  if (pathname === '/api/admin/payments') {
+    if (!['GET', 'POST'].includes(request.method)) {
+      sendJson(response, 405, { error: 'Method not allowed.' })
+      return
+    }
+    const user = readSession(request)
+    if (!user) {
+      sendJson(response, 401, { error: 'Sign in to continue.' })
+      return
+    }
+    if (request.method === 'GET' && !isManualPaymentAdmin(user)) {
+      sendJson(response, 200, { isAdmin: false, payments: [] })
+      return
+    }
+    try {
+      const body = request.method === 'POST' ? await readJson(request) : {}
+      const action = request.method === 'GET' ? 'list' : 'review'
+      sendJson(response, 200, { isAdmin: true, ...await handleAdminPaymentAction(action, user, body) })
+    } catch (error) {
+      const status = error instanceof BillingError ? error.status : 502
+      sendJson(response, status, {
+        error: error instanceof BillingError ? error.message : 'Could not process the admin payment request.',
+      })
     }
     return
   }

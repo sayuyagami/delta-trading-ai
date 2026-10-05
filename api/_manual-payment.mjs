@@ -33,6 +33,107 @@ export async function handleBillingAction(action, user, body = {}) {
   }
 }
 
+export function isManualPaymentAdmin(user) {
+  if (!user?.email) return false
+  const admins = (process.env.ADMIN_EMAILS || '').split(',')
+    .map(email => email.trim().toLowerCase())
+    .filter(Boolean)
+  return admins.includes(user.email.toLowerCase())
+}
+
+export async function handleAdminPaymentAction(action, user, body = {}) {
+  if (!isManualPaymentAdmin(user)) throw new BillingError(403, 'Admin access is required.')
+  if (!billingIsConfigured()) throw new BillingError(503, 'Manual payment storage is not configured.')
+
+  if (action === 'list') return listPendingPaymentReviews()
+  if (action === 'review') return reviewPayment(user, body)
+  throw new BillingError(404, 'Admin payment action not found.')
+}
+
+async function listPendingPaymentReviews() {
+  const url = new URL(`/rest/v1/${subscriptionTable}`, process.env.SUPABASE_URL)
+  url.searchParams.set('status', 'eq.pending_review')
+  url.searchParams.set('select', 'google_sub,email,name,manual_payment_request_id,manual_payment_reference,manual_payment_submitted_at')
+  url.searchParams.set('order', 'manual_payment_submitted_at.asc')
+  const response = await supabaseRequest(url)
+  return { payments: await response.json() }
+}
+
+async function reviewPayment(admin, body) {
+  const { googleSub, requestId, reference, decision, note } = body
+  if (typeof googleSub !== 'string' || typeof requestId !== 'string'
+    || typeof reference !== 'string' || !['approve', 'reject'].includes(decision)) {
+    throw new BillingError(400, 'Payment review details are invalid.')
+  }
+
+  const filter = new URLSearchParams({
+    google_sub: `eq.${googleSub}`,
+    manual_payment_request_id: `eq.${requestId}`,
+    manual_payment_reference: `eq.${reference}`,
+    status: 'eq.pending_review',
+  })
+  const lookup = new URL(`/rest/v1/${subscriptionTable}`, process.env.SUPABASE_URL)
+  lookup.search = filter.toString()
+  lookup.searchParams.set('select', 'google_sub,email,name,manual_payment_request_id,manual_payment_reference,manual_payment_status,manual_payment_submitted_at')
+  const lookupResponse = await supabaseRequest(lookup)
+  const rows = await lookupResponse.json()
+  const payment = rows[0]
+  if (!payment) throw new BillingError(409, 'This payment is no longer pending review.')
+
+  const reviewedAt = new Date()
+  const approved = decision === 'approve'
+  const updated = {
+    manual_payment_status: approved ? 'approved' : 'rejected',
+    status: approved ? 'active' : 'rejected',
+    manual_payment_reviewed_at: reviewedAt.toISOString(),
+    manual_payment_reviewed_by: admin.email,
+    manual_payment_review_note: typeof note === 'string' ? note.trim().slice(0, 300) : null,
+    access_expires_at: approved ? addOneCalendarMonth(reviewedAt).toISOString() : null,
+    updated_at: reviewedAt.toISOString(),
+  }
+  const update = new URL(`/rest/v1/${subscriptionTable}`, process.env.SUPABASE_URL)
+  update.search = filter.toString()
+  update.searchParams.set('select', 'google_sub,email,name,manual_payment_request_id,manual_payment_reference,manual_payment_status,manual_payment_reviewed_at,manual_payment_reviewed_by,manual_payment_review_note,status,access_expires_at')
+  const updateResponse = await supabaseRequest(update, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify(updated),
+  })
+  const updatedRows = await updateResponse.json()
+  if (!updatedRows.length) throw new BillingError(409, 'This payment was already reviewed.')
+
+  await savePaymentReviewAudit(payment, admin, decision, updated.manual_payment_review_note, reviewedAt)
+  return { payment: updatedRows[0] }
+}
+
+async function savePaymentReviewAudit(payment, admin, decision, note, reviewedAt) {
+  const url = new URL('/rest/v1/manual_payment_reviews', process.env.SUPABASE_URL)
+  await supabaseRequest(url, {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      google_sub: payment.google_sub,
+      email: payment.email,
+      manual_payment_request_id: payment.manual_payment_request_id,
+      manual_payment_reference: payment.manual_payment_reference,
+      decision,
+      reviewed_by: admin.email,
+      note,
+      reviewed_at: reviewedAt.toISOString(),
+    }),
+  })
+}
+
+function addOneCalendarMonth(date) {
+  const expiration = new Date(date)
+  const dayOfMonth = expiration.getUTCDate()
+  expiration.setUTCDate(1)
+  expiration.setUTCMonth(expiration.getUTCMonth() + 1)
+  const lastDay = new Date(Date.UTC(expiration.getUTCFullYear(), expiration.getUTCMonth() + 1, 0)).getUTCDate()
+  expiration.setUTCDate(Math.min(dayOfMonth, lastDay))
+  return expiration
+}
+
 async function getAccessStatus(user) {
   const saved = await findUserSubscription(user.sub)
   if (!saved) return inactiveStatus()

@@ -71,6 +71,22 @@ button, select { cursor: pointer; }
 .secondary-button:disabled { cursor: wait; opacity: .6; }
 .billing-detail, .billing-notice { color: var(--muted); font-size: 12px; line-height: 1.5; }
 .billing-notice { color: #247653; }
+.admin-dialog { width: min(100%, 560px); }
+.admin-payment-list { display: flex; max-height: min(48dvh, 390px); flex-direction: column; gap: 10px; overflow-y: auto; margin: 16px 0; padding-right: 4px; }
+.admin-payment-row { padding: 13px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.admin-payment-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.admin-payment-top strong { min-width: 0; overflow-wrap: anywhere; color: var(--ink); font-size: 12px; }
+.admin-payment-top time, .admin-payment-row>p { color: var(--muted); font-size: 10px; }
+.admin-payment-row>p { margin: 4px 0 10px; }
+.admin-payment-meta { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin: 0 0 12px; }
+.admin-payment-meta dt { color: var(--muted); font-size: 9px; }
+.admin-payment-meta dd { margin: 3px 0 0; overflow-wrap: anywhere; color: var(--ink); font-size: 11px; font-weight: 700; }
+.admin-payment-actions { display: flex; gap: 8px; }
+.admin-approve, .admin-reject { min-height: 36px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 5px; background: white; color: var(--ink); cursor: pointer; font-size: 10px; font-weight: 700; }
+.admin-approve { border-color: #b7dfcc; background: #eff9f3; color: #247653; }
+.admin-reject { color: var(--red); }
+.admin-approve:disabled, .admin-reject:disabled { cursor: wait; opacity: .6; }
+.review-count { display: inline-grid; min-width: 16px; height: 16px; place-items: center; margin-left: 4px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-dark); font-size: 9px; }
 .dialog-close { display: block; margin: 14px auto 0; padding: 6px 10px; border: 0; background: transparent; color: var(--muted); font-size: 11px; }
 .dialog-close:hover { color: var(--accent-dark); }
 @keyframes auth-arrive { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
