@@ -27,6 +27,7 @@ interface ChartAnalysis {
   stopLoss: number | null
   stopLossY: number | null
   target: number | null
+  targetY: number | null
   confidence: number
   rationale: string
 }
@@ -73,6 +74,7 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
 
   authUser: { email: string; name: string } | null = null
   themeDark = false
+  mobileMenuOpen = false
   authLoading = true
   loginDialogOpen = false
   googleLoading = false
@@ -126,6 +128,14 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
     } catch {
       return
     }
+  }
+
+  toggleMobileMenu(): void {
+    this.mobileMenuOpen = !this.mobileMenuOpen
+  }
+
+  closeMobileMenu(): void {
+    this.mobileMenuOpen = false
   }
 
   private syncThemeClass(): void {
@@ -466,6 +476,7 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
       this.authUser = session.user
 
       if (this.authUser) {
+        this.clearLandingHash()
         await this.refreshSubscription()
         await this.refreshAdminPayments()
       } else {
@@ -493,6 +504,7 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
       const result = await response.json() as { user?: { email: string; name: string }; error?: string }
       if (!response.ok || !result.user) throw new Error(result.error || 'Google sign-in could not be completed.')
       this.authUser = result.user
+      this.clearLandingHash()
       this.loginDialogOpen = false
       await this.refreshSubscription()
       await this.refreshAdminPayments()
@@ -502,6 +514,12 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
       this.authLoading = false
       this.changeDetector.markForCheck()
     }
+  }
+
+  private clearLandingHash(): void {
+    const view = this.document.defaultView
+    if (!view?.location.hash) return
+    view.history.replaceState(view.history.state, '', `${view.location.pathname}${view.location.search}`)
   }
 
   private loadGoogleIdentityServices(): Promise<void> {

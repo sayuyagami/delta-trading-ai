@@ -92,21 +92,26 @@
 
 @if (!authUser) {
   <main class="landing-page" id="top">
-    <header class="landing-nav">
+    <header class="landing-nav" [class.landing-nav-menu-open]="mobileMenuOpen">
       <a class="landing-brand" href="#top" aria-label="TradeGuru home">
         <span class="brand-mark">T</span>
         <span class="landing-brand-copy"><strong>Trade<span class="brand-accent">Guru</span></strong><small>AI Chart Intelligence</small></span>
       </a>
-      <nav class="landing-links" aria-label="Main navigation">
-        <a href="#how-it-works">How it works</a>
-        <a href="#example-analysis">Example</a>
-        <a href="#pricing">Pricing</a>
-        <a href="#faq">FAQ</a>
+      <nav class="landing-links" id="landing-nav-links" aria-label="Main navigation">
+        <a href="#how-it-works" (click)="closeMobileMenu()">How it works</a>
+        <a href="#example-analysis" (click)="closeMobileMenu()">Example</a>
+        <a href="#pricing" (click)="closeMobileMenu()">Pricing</a>
+        <a href="#faq" (click)="closeMobileMenu()">FAQ</a>
+        <div class="landing-mobile-actions">
+          <button class="landing-signin" (click)="closeMobileMenu(); openLoginDialog()">Sign in</button>
+          <button class="landing-nav-cta" (click)="closeMobileMenu(); openLoginDialog()">Analyze My Chart <span aria-hidden="true">→</span></button>
+        </div>
       </nav>
       <div class="landing-nav-actions">
-        <button class="theme-toggle" type="button" role="switch" aria-label="Dark mode" [attr.aria-checked]="themeDark" [attr.title]="themeDark ? 'Switch to bright mode' : 'Switch to dark mode'" (click)="toggleTheme()"><span class="theme-toggle-track" aria-hidden="true"><span></span></span><span class="theme-toggle-label">Dark mode</span></button>
+        <button class="theme-toggle" type="button" [attr.aria-label]="themeDark ? 'Switch to bright mode' : 'Switch to dark mode'" [attr.title]="themeDark ? 'Switch to bright mode' : 'Switch to dark mode'" [attr.aria-pressed]="themeDark" (click)="toggleTheme()"><span aria-hidden="true">{{ themeDark ? '☀' : '☾' }}</span></button>
         <button class="landing-signin" (click)="openLoginDialog()">Sign in</button>
         <button class="landing-nav-cta" (click)="openLoginDialog()">Analyze My Chart <span aria-hidden="true">→</span></button>
+        <button class="landing-menu-toggle" type="button" [attr.aria-expanded]="mobileMenuOpen" aria-controls="landing-nav-links" [attr.aria-label]="mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'" [attr.title]="mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'" (click)="toggleMobileMenu()"><span class="landing-menu-icon" aria-hidden="true"><span></span></span></button>
       </div>
     </header>
 
@@ -243,9 +248,19 @@
       </div>
     </section>
 
-    <section class="landing-pricing" id="pricing">
-      <div><p class="eyebrow">SIMPLE ACCESS</p><h2>One month. One clear price.</h2><p>₹99 for one calendar month. One-time UPI payment, manually verified. No auto-renewal.</p></div>
-      <button class="landing-primary" (click)="openLoginDialog()">Analyze My Chart <span aria-hidden="true">→</span></button>
+    <section class="landing-pricing" id="pricing" aria-labelledby="pricing-title">
+      <div class="pricing-heading">
+        <div><p class="eyebrow">PRICING & ACCESS</p><h2 id="pricing-title">Clear access, before your first upload.</h2><p>Create a free account to explore the example. Live chart analysis requires an active access pass.</p></div>
+        <button class="landing-primary" (click)="openLoginDialog()">Get one month <span aria-hidden="true">→</span></button>
+      </div>
+      <div class="pricing-facts">
+        <article><span>FREE</span><h3>Explore first</h3><p>Account access and the illustrative example. No free live chart analyses.</p></article>
+        <article><span>PAID PASS</span><h3>₹99 for one month</h3><p>One-time UPI payment. Access starts after manual payment approval.</p></article>
+        <article><span>ANALYSIS COUNT</span><h3>One 1H chart per request</h3><p>The app currently sets no monthly analysis cap for an active pass.</p></article>
+        <article><span>RENEWAL</span><h3>No recurring subscription</h3><p>The pass does not auto-renew. Pay again only when you choose to continue.</p></article>
+        <article><span>TRIAL</span><h3>No free trial</h3><p>Live chart analysis is available after your payment is approved.</p></article>
+        <article><span>WHEN ACCESS ENDS</span><h3>Analysis pauses</h3><p>After one month, analysis is locked until another pass is purchased and approved.</p></article>
+      </div>
     </section>
 
     <section class="landing-trust" aria-labelledby="trust-title">
@@ -306,7 +321,7 @@
   <header class="topbar">
     <div class="brand"><span class="brand-mark">T</span><span>Trade<span class="brand-accent">Guru</span></span></div>
     <nav aria-label="Workspace navigation"><a class="active" href="#workspace">Workspace</a></nav>
-    @if (authUser) { <div class="status"><span class="status-dot"></span><span class="user-name">{{ authUser.name }}</span><span class="subscription-pill" [class.subscription-pill-active]="subscription?.active">{{ subscription?.active ? 'Subscribed' : 'Free' }}</span>@if (isPaymentAdmin) { <button class="manage-subscription" (click)="openAdminDialog()">Payment review <span class="review-count">{{ adminPayments.length }}</span></button> }<button class="manage-subscription" (click)="openSubscriptionDialog()">Manage</button><button class="theme-toggle" type="button" role="switch" aria-label="Dark mode" [attr.aria-checked]="themeDark" [attr.title]="themeDark ? 'Switch to bright mode' : 'Switch to dark mode'" (click)="toggleTheme()"><span class="theme-toggle-track" aria-hidden="true"><span></span></span><span class="theme-toggle-label">Dark mode</span></button><button class="sign-out" (click)="signOut()" aria-label="Sign out">Sign out</button></div> }
+    @if (authUser) { <div class="status"><span class="status-dot"></span><span class="user-name">{{ authUser.name }}</span><span class="subscription-pill" [class.subscription-pill-active]="subscription?.active">{{ subscription?.active ? 'Subscribed' : 'Free' }}</span>@if (isPaymentAdmin) { <button class="manage-subscription" (click)="openAdminDialog()">Payment review <span class="review-count">{{ adminPayments.length }}</span></button> }<button class="manage-subscription" (click)="openSubscriptionDialog()">Manage</button><button class="theme-toggle" type="button" [attr.aria-label]="themeDark ? 'Switch to bright mode' : 'Switch to dark mode'" [attr.title]="themeDark ? 'Switch to bright mode' : 'Switch to dark mode'" [attr.aria-pressed]="themeDark" (click)="toggleTheme()"><span aria-hidden="true">{{ themeDark ? '☀' : '☾' }}</span></button><button class="sign-out" (click)="signOut()" aria-label="Sign out">Sign out</button></div> }
   </header>
 
   <section class="intro" id="workspace">
@@ -340,12 +355,12 @@
       <div class="chart-toolbar"><span class="timeframe active">1H chart</span><span class="toolbar-spacer"></span><span>Image preview</span></div>
       <div class="chart-wrap" [class.chart-has-image]="oneHourPreview" [attr.aria-busy]="analyzing">
         @if (oneHourPreview; as oneHourImage) {
-          <figure class="uploaded-chart-frame"><figcaption>1H chart</figcaption><div class="chart-image-viewport" [style.aspect-ratio]="oneHourImageAspectRatio"><img class="uploaded-chart" [src]="oneHourImage" alt="Uploaded 1H chart" (load)="onPreviewLoad($event)" />@if (analysis?.entry != null && analysis.entryY != null) { <div class="price-level entry-level" [style.top.%]="analysis.entryY"><span>ENTRY</span><strong>{{ formatPrice(analysis.entry) }}</strong></div> } @if (analysis?.stopLoss != null && analysis.stopLossY != null) { <div class="price-level stop-level" [style.top.%]="analysis.stopLossY"><span>STOP-LOSS</span><strong>{{ formatPrice(analysis.stopLoss) }}</strong></div> }</div></figure>
+          <figure class="uploaded-chart-frame"><figcaption>1H chart</figcaption><div class="chart-image-viewport" [style.aspect-ratio]="oneHourImageAspectRatio"><img class="uploaded-chart" [src]="oneHourImage" alt="Uploaded 1H chart" (load)="onPreviewLoad($event)" />@if (analysis?.entry != null && analysis.entryY != null) { <div class="price-level entry-level" [style.top.%]="analysis.entryY"><span>ENTRY</span><strong>{{ formatPrice(analysis.entry) }}</strong></div> } @if (analysis?.stopLoss != null && analysis.stopLossY != null) { <div class="price-level stop-level" [style.top.%]="analysis.stopLossY"><span>STOP-LOSS</span><strong>{{ formatPrice(analysis.stopLoss) }}</strong></div> } @if (analysis?.target != null && analysis.targetY != null) { <div class="price-level target-level" [style.top.%]="analysis.targetY"><span>TARGET</span><strong>{{ formatPrice(analysis.target) }}</strong></div> }</div></figure>
         } @else {
           <div class="empty-chart"><span class="empty-chart-icon" aria-hidden="true">↑</span><strong>Your chart preview will appear here</strong><span>Upload a clear 1H PNG or JPG screenshot to begin.</span></div>
         }
       </div>
-      <div class="chart-legend">{{ analysis?.entry != null ? 'Violet marks entry · red marks stop-loss. Placement is approximate; verify levels against the chart.' : analysis ? 'No trade levels returned for this chart.' : 'Entry and stop-loss markers will appear after chart analysis.' }}</div>
+      <div class="chart-legend">{{ analysis?.entry != null ? 'Violet marks entry · red marks stop-loss · green marks target. Placement is approximate; verify levels against the chart.' : analysis ? 'No trade levels returned for this chart.' : 'Entry, stop-loss, and target markers will appear after chart analysis.' }}</div>
     </section>
 
     <aside class="right-rail" aria-label="Chart analysis and position planning">

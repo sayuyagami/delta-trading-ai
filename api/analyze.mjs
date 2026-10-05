@@ -16,16 +16,17 @@ const responseSchema = {
     stopLoss: { type: Type.NUMBER },
     stopLossY: { type: Type.NUMBER },
     target: { type: Type.NUMBER },
+    targetY: { type: Type.NUMBER },
     confidence: { type: Type.NUMBER },
     rationale: { type: Type.STRING },
   },
-  required: ['instrument', 'timeframe', 'bias', 'entry', 'entryY', 'stopLoss', 'stopLossY', 'target', 'confidence', 'rationale'],
+  required: ['instrument', 'timeframe', 'bias', 'entry', 'entryY', 'stopLoss', 'stopLossY', 'target', 'targetY', 'confidence', 'rationale'],
 }
 
 function hasValidLevels(result) {
   if (result.bias === 'NO_TRADE') return true
 
-  const positionsAreValid = [result.entryY, result.stopLossY]
+  const positionsAreValid = [result.entryY, result.stopLossY, result.targetY]
     .every(value => Number.isFinite(value) && value >= 0 && value <= 100)
   const longLevelsAreValid = result.bias === 'LONG'
     && result.stopLoss < result.entry && result.entry < result.target
@@ -37,7 +38,7 @@ function hasValidLevels(result) {
 
 function normalizeAnalysis(raw, requestedInstrument) {
   const result = JSON.parse(raw)
-  const { bias, entry, entryY, stopLoss, stopLossY, target, confidence, rationale } = result
+  const { bias, entry, entryY, stopLoss, stopLossY, target, targetY, confidence, rationale } = result
   if (!['LONG', 'SHORT', 'NO_TRADE'].includes(bias)
     || ![entry, stopLoss, target, confidence].every(Number.isFinite)
     || !hasValidLevels(result)
@@ -59,6 +60,7 @@ function normalizeAnalysis(raw, requestedInstrument) {
     stopLoss: bias === 'NO_TRADE' ? null : stopLoss,
     stopLossY: bias === 'NO_TRADE' ? null : stopLossY,
     target: bias === 'NO_TRADE' ? null : target,
+    targetY: bias === 'NO_TRADE' ? null : targetY,
     confidence,
     rationale: rationale.slice(0, 600),
   }
@@ -136,7 +138,7 @@ export default async function handler(request, response) {
         role: 'user',
         parts: [
           {
-            text: `Analyze the supplied 1H trading chart image for ${requestedInstrument}. Use the 1H chart for trend, support/resistance, a potential entry, invalidation stop-loss, and first target. Set timeframe to 1H. Requested trade bias: ${requestedBias}. Read prices only when supported by the visible price axis; never invent a scale or levels. For each entry and stop-loss, also return entryY and stopLossY: the estimated vertical position of that price as a percentage of the full uploaded image height, from its top edge (0) to bottom edge (100). Account for the chart's visible plotting area within the image. The positions must correspond to the returned prices; do not guess if the image does not support a clear placement. Respect the requested bias. If the image is unreadable, lacks a legible price scale, or shows no clear setup, return bias NO_TRADE and set entry, entryY, stopLoss, stopLossY, and target to 0. Confidence is 0-100. Give a concise rationale citing visible chart evidence and uncertainty. These are approximate educational estimates, not financial advice.`,
+            text: `Analyze the supplied 1H trading chart image for ${requestedInstrument}. Use the 1H chart for trend, support/resistance, a potential entry, invalidation stop-loss, and first target. Set timeframe to 1H. Requested trade bias: ${requestedBias}. Read prices only when supported by the visible price axis; never invent a scale or levels. For entry, stop-loss, and target, return entryY, stopLossY, and targetY: each is the estimated vertical position of its price as a percentage of the full uploaded image height, from its top edge (0) to bottom edge (100). Account for the chart's visible plotting area within the image. Each position must correspond to its returned price; do not guess if the image does not support a clear placement. Respect the requested bias. If the image is unreadable, lacks a legible price scale, or shows no clear setup, return bias NO_TRADE and set entry, entryY, stopLoss, stopLossY, target, and targetY to 0. Confidence is 0-100. Give a concise rationale citing visible chart evidence and uncertainty. These are approximate educational estimates, not financial advice.`,
           },
           { text: 'The following image is the 1H chart.' },
           { inlineData: { mimeType, data: image.toString('base64') } },

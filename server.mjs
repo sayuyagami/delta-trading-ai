@@ -18,12 +18,15 @@ const responseSchema = {
     timeframe: { type: Type.STRING },
     bias: { type: Type.STRING, enum: ['LONG', 'SHORT', 'NO_TRADE'] },
     entry: { type: Type.NUMBER },
+    entryY: { type: Type.NUMBER },
     stopLoss: { type: Type.NUMBER },
+    stopLossY: { type: Type.NUMBER },
     target: { type: Type.NUMBER },
+    targetY: { type: Type.NUMBER },
     confidence: { type: Type.NUMBER },
     rationale: { type: Type.STRING },
   },
-  required: ['instrument', 'timeframe', 'bias', 'entry', 'stopLoss', 'target', 'confidence', 'rationale'],
+  required: ['instrument', 'timeframe', 'bias', 'entry', 'entryY', 'stopLoss', 'stopLossY', 'target', 'targetY', 'confidence', 'rationale'],
 }
 
 function sendJson(response, status, body) {
@@ -48,9 +51,10 @@ async function readJson(request) {
 
 function normalizeAnalysis(raw, requestedInstrument) {
   const result = JSON.parse(raw)
-  const { bias, entry, stopLoss, target, confidence, rationale } = result
+  const { bias, entry, entryY, stopLoss, stopLossY, target, targetY, confidence, rationale } = result
   if (!['LONG', 'SHORT', 'NO_TRADE'].includes(bias)
-    || ![entry, stopLoss, target, confidence].every(Number.isFinite)
+    || ![entry, entryY, stopLoss, stopLossY, target, targetY, confidence].every(Number.isFinite)
+    || [entryY, stopLossY, targetY].some(value => value < 0 || value > 100)
     || confidence < 0 || confidence > 100
     || typeof rationale !== 'string' || !rationale.trim()) {
     throw new Error('Gemini returned an incomplete chart analysis.')
@@ -71,8 +75,11 @@ function normalizeAnalysis(raw, requestedInstrument) {
       : 'Unknown timeframe',
     bias,
     entry: bias === 'NO_TRADE' ? null : entry,
+    entryY: bias === 'NO_TRADE' ? null : entryY,
     stopLoss: bias === 'NO_TRADE' ? null : stopLoss,
+    stopLossY: bias === 'NO_TRADE' ? null : stopLossY,
     target: bias === 'NO_TRADE' ? null : target,
+    targetY: bias === 'NO_TRADE' ? null : targetY,
     confidence,
     rationale: rationale.slice(0, 600),
   }
@@ -208,7 +215,7 @@ const server = createServer(async (request, response) => {
     const body = await readJson(request)
     const { charts: chartInputs, instrument, tradeBias } = body
     if (!Array.isArray(chartInputs) || chartInputs.length !== 1) {
-      sendJson(response, 400, { error: 'Provide one 4H chart image.' })
+      sendJson(response, 400, { error: 'Provide one 1H chart image.' })
       return
     }
 
@@ -217,10 +224,10 @@ const server = createServer(async (request, response) => {
     let totalImageBytes = 0
     for (const chart of chartInputs) {
       const { timeframe, mimeType, data } = chart || {}
-      if (timeframe !== '4H' || seenTimeframes.has(timeframe)
+      if (timeframe !== '1H' || seenTimeframes.has(timeframe)
         || !['image/png', 'image/jpeg'].includes(mimeType) || typeof data !== 'string'
         || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(data)) {
-        sendJson(response, 400, { error: 'Provide a valid PNG or JPG chart labeled 4H.' })
+        sendJson(response, 400, { error: 'Provide a valid PNG or JPG chart labeled 1H.' })
         return
       }
 
@@ -241,7 +248,7 @@ const server = createServer(async (request, response) => {
         role: 'user',
         parts: [
           {
-            text: `Analyze the supplied 4H trading chart image for ${requestedInstrument}. Use the 4H chart for trend, support/resistance, a potential entry, invalidation stop-loss, and first target. Set timeframe to 4H. Requested trade bias: ${requestedBias}. Read prices only when supported by the visible price axis; never invent a scale or levels. Respect the requested bias. If the image is unreadable, lacks a legible price scale, or shows no clear setup, return bias NO_TRADE and set entry, stopLoss, and target to 0. Confidence is 0-100. Give a concise rationale citing visible chart evidence and uncertainty. These are approximate educational estimates, not financial advice.`,
+            text: `Analyze the supplied 1H trading chart image for ${requestedInstrument}. Use the 1H chart for trend, support/resistance, a potential entry, invalidation stop-loss, and first target. Set timeframe to 1H. Requested trade bias: ${requestedBias}. Read prices only when supported by the visible price axis; never invent a scale or levels. For entry, stop-loss, and target, return entryY, stopLossY, and targetY: each is the estimated vertical position of its price as a percentage of the full uploaded image height, from its top edge (0) to bottom edge (100). Account for the chart's visible plotting area. Each position must correspond to its returned price; do not guess if the image does not support a clear placement. Respect the requested bias. If the image is unreadable, lacks a legible price scale, or shows no clear setup, return bias NO_TRADE and set entry, entryY, stopLoss, stopLossY, target, and targetY to 0. Confidence is 0-100. Give a concise rationale citing visible chart evidence and uncertainty. These are approximate educational estimates, not financial advice.`,
           },
           ...charts.flatMap(chart => [
             { text: `The following image is the ${chart.timeframe} chart.` },

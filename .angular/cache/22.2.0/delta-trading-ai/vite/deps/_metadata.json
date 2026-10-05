@@ -1,37 +1,37 @@
 {
-  "hash": "4a971239",
-  "configHash": "f7d31c28",
+  "hash": "4f104d81",
+  "configHash": "b50d7bc0",
   "lockfileHash": "b4e6f843",
-  "browserHash": "f7619040",
+  "browserHash": "5bb9b1a1",
   "optimized": {
     "@angular/common": {
       "src": "../../../../../../node_modules/@angular/common/fesm2022/common.mjs",
       "file": "@angular_common.js",
-      "fileHash": "d2610f35",
+      "fileHash": "20ac5ffc",
       "needsInterop": false
     },
     "@angular/core": {
       "src": "../../../../../../node_modules/@angular/core/fesm2022/core.mjs",
       "file": "@angular_core.js",
-      "fileHash": "9b890678",
+      "fileHash": "4b95062d",
       "needsInterop": false
     },
     "@angular/platform-browser": {
       "src": "../../../../../../node_modules/@angular/platform-browser/fesm2022/platform-browser.mjs",
       "file": "@angular_platform-browser.js",
-      "fileHash": "b91dcbf6",
+      "fileHash": "6c7c815e",
       "needsInterop": false
     },
     "qrcode": {
       "src": "../../../../../../node_modules/qrcode/lib/browser.js",
       "file": "qrcode.js",
-      "fileHash": "2ae9e2d2",
+      "fileHash": "ce99730e",
       "needsInterop": true
     },
     "zone.js": {
       "src": "../../../../../../node_modules/zone.js/fesm2015/zone.js",
       "file": "zone__js.js",
-      "fileHash": "fef67d07",
+      "fileHash": "b1f7da8b",
       "needsInterop": true
     }
   },
