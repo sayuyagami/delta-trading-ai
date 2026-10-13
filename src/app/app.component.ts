@@ -109,9 +109,9 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
 
   ngOnInit(): void {
     try {
-      this.themeDark = this.document.defaultView?.localStorage.getItem('tradeguru-theme') === 'dark'
+      this.themeDark = this.document.defaultView?.localStorage.getItem('tradeguru-theme') !== 'light'
     } catch {
-      this.themeDark = false
+      this.themeDark = true
     }
     this.syncThemeClass()
   }
